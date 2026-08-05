@@ -1,0 +1,293 @@
+# ImgHub
+
+[English](README.md) · [在线部署指引](https://tenfyzhong.github.io/img-hub/zh-CN.html) · [贡献指南](CONTRIBUTING.zh-CN.md)
+
+ImgHub 是一个只使用 Cloudflare Workers、D1 和 R2 的多用户文件与文本托管服务。用户登录后只能管理自己的内容；替换内容时公开路径不变，只更新 `?v=` 版本参数，让浏览器和 CDN 获取新内容。
+
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/tenfyzhong/img-hub)
+
+## 功能
+
+- 首次启动时创建管理员，不使用共享上传认证码。
+- 管理员可创建用户、分配临时密码和重置密码。
+- 用户首次使用分配或重置后的密码登录时，必须先修改密码。
+- 15 分钟内登录密码连续 3 次失败后，浏览器要求完成 Cloudflare Turnstile；Worker 验证通过后才会接受下一次密码尝试。
+- 所有设置密码表单都要求确认密码并支持显示/隐藏；管理员可以一键生成并复制强随机临时密码。
+- D1 中每条文件和文本记录都包含创建者；用户只能列出、替换和删除自己的内容。
+- R2 按用户 ID 隔离根目录：`users/{user-id}/file/` 与 `users/{user-id}/text/`。
+- 新公开路径使用 `/file/pub_7b62…`、`/text/pub_91ac…` 形式的随机 ID，不暴露用户名、目录或文件名；旧用户名路径保留兼容读取。
+- 替换内容不改变随机公开路径和 R2 object key，只递增缓存版本，例如 `/file/pub_7b62…?v=2`。
+- **上传** 菜单提供等高的上传文件、发布文本、文件外链三个页签；独立的 **文件管理** 菜单在同一个目录树和资源库中混合管理文件与文本，不再按类型切换。
+- 选择文件、拖入文件，或粘贴文件和剪贴板图片后会立即上传并显示进度；上传结果和历史文件均可一键复制裸 URL、Markdown 或 HTML。
+- 文件管理支持目录树筛选、网格/列表视图；支持在经过私网地址与大小检查后抓取图片、文档、压缩包、音视频、文本及其他 HTTP(S) 文件外链，并实时显示抓取字节进度和保存到存储的阶段。
+- 文本支持纯文本、Markdown 和受限富文本编辑；上传、外链导入、替换与删除操作保存在 D1 时间轴中。
+- 管理员可在网页中配置 R2 Object Lifecycle Rules，默认保留 91 天，并保留其他已有规则。
+- 用户可以创建带名称、有效期且可撤销的 API Key；系统只保存 Key 的哈希，明文仅显示一次。
+- 内置 Agent Skill 可通过 API Key 管理资源；浏览器插件支持配置任意部署域名，并支持 Chrome、Edge、Firefox。
+- 带正确版本号的 `/file`、`/text` 读取使用 `caches.default`；通过轻量 D1 审计检查后，缓存命中会跳过 R2 object 读取。
+- 管理员可以配置站点标题、标语、欢迎标题与欢迎说明。
+- 不包含其他存储通道，仅使用 Cloudflare R2。
+
+## 部署方式一：Cloudflare 一键部署按钮
+
+点击上方按钮，授权 Cloudflare，保留自动识别的 `npm run deploy` 命令并部署仓库。同一条部署命令会初始化 D1/R2、应用 migration、为生成的域名创建或复用 managed Turnstile Widget、把私钥保存为 Worker Secret，然后部署 ImgHub。除了 Worker/D1/R2 权限，Turnstile 自动配置还需要 **Turnstile Sites Write**。
+
+部署后：
+
+1. 打开生成的 `workers.dev` 地址。
+2. 为固定管理员用户名 `admin` 设置密码；管理员创建成功后，初始化接口永久关闭。
+3. 进入 **Administration → R2 retention**，填写 Account ID、自动创建的 bucket 名称，以及具有 **Workers R2 Storage Write** 权限的短期 API Token。默认值是 91 天。Token 仅用于本次请求，不会保存。
+4. 创建用户，并通过安全渠道分发临时密码。
+
+自动资源创建是 Wrangler 当前提供的能力。如果你的 Cloudflare 账号或部署入口不支持，请使用下面的命令行一键部署。
+
+## 部署方式二：命令行一键部署
+
+要求安装 Node.js 22 或更高版本，并准备一个 Cloudflare 账号。
+
+```sh
+git clone https://github.com/tenfyzhong/img-hub.git
+cd img-hub
+./deploy.sh
+```
+
+脚本会通过 Wrangler 登录，并以幂等方式完成：
+
+1. 创建或复用 D1 数据库 `img-hub-db`。
+2. 创建或复用 R2 bucket `img-hub-files`。
+3. 生成不纳入 Git 的 binding 配置并应用全部 D1 migration。
+4. 为 `users/` 前缀设置默认 91 天自动删除策略。
+5. 创建或复用 managed Turnstile Widget，并安全写入其 Secret。
+6. 部署 Worker 和静态网站。
+
+脚本不会删除数据库或 bucket。可按需自定义名称、保留时间和区域：
+
+```sh
+IMG_HUB_DATABASE_NAME=my-hub-db \
+IMG_HUB_BUCKET_NAME=my-hub-files \
+IMG_HUB_RETENTION_DAYS=180 \
+IMG_HUB_D1_LOCATION=apac \
+IMG_HUB_R2_LOCATION=apac \
+IMG_HUB_TURNSTILE_DOMAINS=images.example.com \
+./deploy.sh
+```
+
+D1/R2 可用区域由 Wrangler 决定；不设置区域变量时由 Cloudflare 自动选择。脚本会自动识别生成的 `workers.dev` 域名；只有需要授权额外自定义域名时，才设置逗号分隔的 `IMG_HUB_TURNSTILE_DOMAINS`。一个 Widget 最多支持 10 个域名条目，并自动覆盖所配域名的子域名。
+
+## 部署方式三：GitHub Actions
+
+仓库只保留职责明确的工作流：无 Secret 的 CI、稳定 Cloudflare 部署、Tag Release、浏览器插件包和 GitHub Pages 文档。
+
+1. 需要使用 **Sync fork** 持续更新时请选择 Fork；需要独立仓库时可从模板创建。仓库维护者需先在 **Settings → General → Template repository** 开启一次模板选项，GitHub 才会显示 **Use this template**。
+2. 创建可以编辑 Workers、D1、R2 和 Turnstile 资源的 Cloudflare API Token。R2 生命周期需要 **Workers R2 Storage Write**，登录验证自动配置需要 **Turnstile Sites Write**。
+3. 打开 GitHub 仓库的 **Settings → Secrets and variables → Actions**，添加：
+   - `CLOUDFLARE_API_TOKEN`
+   - `CLOUDFLARE_ACCOUNT_ID`
+4. 打开 **Actions → Deploy to Cloudflare → Run workflow**，或向 `main` 分支推送提交。
+
+`main` 是稳定分发分支，开发代码通过 `develop` 集成。同一份部署 workflow 同时适用于本仓库和所有 fork。GitHub 只读取当前运行仓库自己的 Secrets，因此 fork 只会部署到 fork 所有者自己的 Cloudflare 账号。默认资源前缀是 `img-hub-{repository-id}`，避免本仓库与不同 fork 的 Worker、D1、R2、Turnstile 重名。可添加 Actions Repository Variable `IMG_HUB_RESOURCE_PREFIX` 自定义前缀；CLI 还支持 `IMG_HUB_WORKER_NAME`、`IMG_HUB_DATABASE_NAME`、`IMG_HUB_BUCKET_NAME`、`IMG_HUB_RETENTION_DAYS` 和 `IMG_HUB_TURNSTILE_DOMAINS`。
+
+不读取 Secret 的 CI 会验证目标为 `develop` 和 `main` 的 PR；稳定部署 workflow 会验证每次 `main` 更新，再运行 `npm run deploy:cloudflare`，自动创建 D1/R2/Turnstile、应用 migration、设置默认 91 天生命周期规则，并带 Turnstile Secret 部署。Fork 用户必须先启用一次 Actions，同步后的 `main` 才会自动构建。没有配置两个 Cloudflare Secrets 时验证仍会执行，部署步骤会明确跳过。完整分支与发布规则见 [CONTRIBUTING.zh-CN.md](CONTRIBUTING.zh-CN.md)。模板创建的仓库历史独立，没有 GitHub 的 **Sync fork** 路径。
+
+### 开启指引网站
+
+进入 GitHub 仓库的 **Settings → Pages**，将 Source 设置为 **GitHub Actions**。`pages.yml` 会把 `docs/` 下的中英文指引发布为 GitHub Pages。
+
+## API Key 与 Agent Skill
+
+用户完成临时密码修改后，打开侧边栏 **安全** 下方独立的 **API Key** 菜单，填写名称和可选有效期后创建 Key。请立即复制显示一次的 `imh_...`；系统只保存哈希。撤销后下一次请求立即失效。API Key 只能操作所属用户自己的资源，不能管理用户、修改密码或继续创建 Key。
+
+可复用 Skill 位于 `skills/img-hub`。将整个目录复制到 AI Agent 使用的 skills 目录，并在 Agent 进程的环境变量中配置：
+
+```sh
+export IMG_HUB_URL=https://images.example.com
+export IMG_HUB_API_KEY=imh_your_key_shown_once
+```
+
+Skill 自带无第三方依赖的客户端，可列出、上传、替换、删除文件，也可发布或替换文本：
+
+```sh
+python3 skills/img-hub/scripts/img_hub.py upload ./diagram.png --directory agents
+python3 skills/img-hub/scripts/img_hub.py list --kind file
+```
+
+不要把 `IMG_HUB_API_KEY` 写进 prompt、shell history、日志或代码仓库。
+
+## 浏览器插件
+
+从 GitHub Release 下载：
+
+- `img-hub-extension-chromium-*.zip`：用于 Chrome 和 Edge
+- `img-hub-extension-firefox-*.zip`：用于 Firefox
+
+本地安装时先解压对应包。Chrome/Edge 在扩展管理页开启 **Developer mode** 后选择 **Load unpacked**；Firefox 打开 `about:debugging#/runtime/this-firefox` 选择 **Load Temporary Add-on**，或在发布到 AMO 后安装签名包。打开插件，为部署域名授权并登录。插件只在扩展本地存储中保存部署域名与登录 Token，不保存密码；支持图片上传、列表、复制 URL、替换和删除。
+
+运行 `npm run build:extension` 可构建两个通用包。产物不包含固定部署域名，因此同一套插件可连接本仓库或任意 fork 部署的服务。
+
+## 版本发布与浏览器商店
+
+先把 `package.json` 更新为纯数字点号组成的插件版本并提交，再推送匹配 Tag，例如 `v0.2.0`。`release.yml` 会运行测试、打包插件；若当前仓库配置了 Cloudflare 凭据，会部署 Tag 版本；随后创建包含两个 ZIP 的 GitHub Release。
+
+只有配置了完整 Actions Secrets 集合时，才自动发布对应浏览器商店：
+
+- Chrome：`CHROME_PUBLISHER_ID`、`CHROME_EXTENSION_ID`、`CHROME_CLIENT_ID`、`CHROME_CLIENT_SECRET`、`CHROME_REFRESH_TOKEN`
+- Edge：`EDGE_PRODUCT_ID`、`EDGE_CLIENT_ID`、`EDGE_API_KEY`
+- Firefox：`WEB_EXT_API_KEY`、`WEB_EXT_API_SECRET`
+
+某个商店缺少 Secret 时只跳过该商店，不影响插件打包或其他商店。首次使用 API 自动发布前，需要先在各浏览器开发者后台创建对应的商店条目。
+
+## 首次启动与账号流程
+
+系统没有默认管理员密码。管理员用户名固定为 `admin`；全新部署第一次打开时，访问者需要在管理员初始化表单中设置并确认密码。完成后：
+
+1. 管理员登录并为用户创建临时密码。
+2. 用户可使用临时密码登录，但所有文件和文本操作都会被阻止。
+3. 用户修改临时密码后才能正常使用。
+4. 管理员重置密码会撤销该用户所有会话；用户主动改密后只保留当前会话。
+
+密码使用带随机盐的 PBKDF2-SHA-256 保存。Session Cookie 在 HTTPS 下启用 `HttpOnly`、`SameSite=Strict` 和 `Secure`；D1 只保存 session token 的哈希。
+
+相同规范化用户名和 Cloudflare 客户端 IP 在 15 分钟内连续 3 次失败后，页面会按需显示 Turnstile。D1 的计数表只保存两者组合的 SHA-256 标识，不保存明文用户名或 IP。Turnstile Token 五分钟过期且只能使用一次；服务端会校验 `login` action 和当前主机名。成功登录会清除失败状态。如果浏览器插件触发限制，请先在其配置的 ImgHub 网站完成一次网页登录验证，再回到插件重试。
+
+## 语言
+
+网页首次使用时读取浏览器语言列表中的第一首选语言。以 `zh` 开头的浏览器语言环境使用简体中文，其他语言环境使用英文。页面顶部的 **EN / 中文** 可覆盖浏览器选择，并只在当前浏览器的 local storage 中保存。
+
+内置导航、表单、动态消息、确认框、日期、空状态和常见 API 错误均支持中英文。管理员配置的站点标题和欢迎文案由两种语言共享；未保存自定义配置时，内置欢迎文案分别提供中英文版本。
+
+## 管理员密码找回
+
+ImgHub 没有默认密码、邮件找回、密保问题或后门。唯一管理员忘记密码时，必须由拥有部署控制权的人通过仓库内置的 D1 恢复工具重置。
+
+恢复本地持久化开发数据库时，先停止 `npm run dev:local`，再执行：
+
+```sh
+npm run admin:reset
+npm run dev:local
+```
+
+恢复已部署数据库时，先登录 Wrangler，在 Cloudflare Dashboard 或通过 `npx wrangler d1 list` 找到准确的 D1 数据库名称，再显式指定：
+
+```sh
+npx wrangler login
+npm run admin:reset -- --remote --database YOUR_D1_DATABASE_NAME
+```
+
+输入新临时密码时终端不会回显。请确认命令输出中的 `administrators_reset` 为 `1`，且 `administrator_username` 为 `admin`；如果前者是 `0`，说明选中的数据库中没有管理员。恢复操作只替换管理员密码哈希，将其标记为临时密码，同时删除管理员全部 Session，并撤销所有有效的管理员 API Key。旧版管理员用户名会被安全地规范为 `admin`，原用户名仅作为公开 URL 别名保留。随后使用用户名 `admin` 和临时密码登录，并立即设置一个不同的正式密码。
+
+远程恢复会直接修改 D1，无法通过应用撤销。请反复确认数据库名称，并且只使用有权操作该部署的凭据。不要把临时密码放进命令行参数、GitHub Actions 输入、日志或代码仓库。
+
+## 管理端地址、内容审计与账户控制
+
+系统没有单独的 `/admin` 地址。请打开站点根地址，例如 `http://localhost:8787`，使用用户名 `admin` 登录，随后导航中会出现 **管理**。数据库尚未初始化时，同一个地址会显示设置并确认密码的管理员初始化表单。
+
+如果本地打开后显示登录表单而不是初始化表单，说明 `.wrangler/state/` 中已经存在管理员。需要保留本地文件和账号时，先停止服务，再运行 `npm run admin:reset`。需要删除全部本地测试数据并重新测试首次启动时，先停止服务，运行 `npm run local:reset`，然后执行 `npm run dev:local`。本地重置不会影响已部署数据库。
+
+**管理 → 内容审计** 会显示每个文件或文本的链接、类型、上传时间、上传者和审计状态。执行 **禁止访问并删除源文件** 后，系统会永久删除 R2 源对象；即使链接此前已经进入缓存，公开 URL 也会返回 404；该资源会从上传者列表隐藏，同时在 D1 中保留封禁管理员、封禁时间等审计墓碑。同一用户不能用相同目录和名称重新上传被封禁的路径。
+
+用户列表提供 **禁用账户** 与 **启用账户**。禁用会立即撤销该用户的全部 Session 和 API Key，禁止登录，并停止访问该账户拥有的全部公开链接。重新启用后可以重新登录，但不会恢复旧 Session 或 Key。唯一管理员账户不能被禁用。
+
+## 存储结构与 URL
+
+用户 `alice` 上传到 `trips/2026` 子目录的图片，在 R2 中保存为：
+
+```text
+users/{alice-user-id}/file/trips/2026/lake.png
+```
+
+公开地址为：
+
+```text
+/file/pub_7b62f18c6d304476a5edc8a4de176cb1?v=1
+```
+
+文本采用相同结构：
+
+```text
+users/{alice-user-id}/text/notes/hello.txt
+/text/pub_91ac1f75e0c84353bb9eca92c4f828a0?v=1
+```
+
+子目录是 R2 的虚拟前缀，`.` 和 `..` 会被拒绝。D1 为每条资源映射随机公开 ID，因此 URL 不会泄露内部路径。替换时仍写入原 R2 key，D1 中的 version 加一，公开路径保持不变，只返回新的 `?v=` 参数。删除时移除 R2 object 和资源元数据，但保留操作时间轴事件。
+
+非图片文件以附件方式下载；通过文本编辑器发布的纯文本使用 `text/plain`；Markdown 与受限富文本会转换为安全 HTML，并附带严格的 Content Security Policy。外链导入或直接上传的 SVG 使用 sandbox 并作为附件下载，避免在应用域名下执行活动内容。
+
+### 公开读取缓存
+
+`/file/pub_7b62…?v=3`、`/text/pub_91ac…?v=2` 这类版本正确的 GET 请求会通过 `caches.default` 写入 Cloudflare Cache API。每次请求会先执行一次轻量 D1 可访问性检查，确保已封禁内容和已禁用账户不能利用旧缓存继续展示；检查通过后的缓存命中会跳过 R2 object 读取。首次读取响应包含 `X-ImgHub-Cache: MISS`，缓存命中时为 `HIT`。
+
+只有唯一、正整数且与 D1 当前 version 相同的 `v` 才会写入缓存。无版本、版本错误、额外查询参数及 HEAD 请求返回 `X-ImgHub-Cache: BYPASS`，避免攻击者制造无限缓存 key。版本 URL 在共享缓存中保留一年，但浏览器 `max-age=0` 会让每次访问都经过审计检查；替换内容后返回新的版本 URL，通过新缓存 key 获取更新内容，公开路径仍不变。
+
+Cloudflare Cache API 的内容只存在于处理请求的数据中心，不会自动复制到全球所有数据中心。它会减少活跃区域内重复的大型 R2 object 读取与响应传输，同时由 D1 可访问性检查保证审计封禁始终生效。
+
+## 站点外观配置
+
+管理员可进入 **Administration → Site appearance** 配置站点标题、标语、欢迎标题和欢迎说明。配置保存在 D1，服务端验证长度，前端只通过 `textContent` 渲染，不会作为 HTML 执行。未配置时自动使用内置默认值。
+
+## R2 生命周期管理
+
+管理员页面会先通过 Cloudflare API 读取现有规则，只替换名为 `img-hub-default-expiration` 的规则，再将选定天数和 `users/` 前缀写回；其他规则保持不变。
+
+提交的 API Token 不写入 D1、R2、日志或浏览器存储。建议使用权限最小、有效期较短的 Token。生命周期删除不可恢复，而且 R2 可能延迟执行；请根据备份与费用要求谨慎选择保留时间。
+
+## 本地开发
+
+启动一个可在浏览器中手工测试的本地服务：
+
+```sh
+npm install
+npm run dev:local
+```
+
+打开 `http://localhost:8787`。如果是全新的本地数据，页面会先要求为管理员 `admin` 设置密码；随后可以直接通过真实浏览器界面手工测试登录、用户管理、图片与文本上传、替换、公开链接、删除、API Key 和站点外观配置。用测试用户名连续登录失败 3 次，确认下一次尝试前显示 Turnstile Widget。按 `Ctrl+C` 停止服务。
+
+`npm run dev:local` 显式使用 `wrangler dev --local`。D1、R2、静态资源和 cache 都在本机运行；`wrangler.jsonc` 中没有 binding 配置 `remote: true`，也不需要 Cloudflare 凭据。命令使用 Cloudflare 官方公开的 always-pass Turnstile 测试密钥，它们不属于任何账号；只有手工触发验证时才会访问公开 Siteverify 端点。本地 D1/R2/cache 数据持久化在已忽略的 `.wrangler/state/`，所以账号和上传内容会在重启后保留。Worker 会在第一次数据请求时自动创建缺少的表。
+
+需要丢弃本地数据、重新测试首次管理员初始化时，先停止开发服务，再执行：
+
+```sh
+npm run local:reset
+npm run dev:local
+```
+
+该命令不会接触已部署的 Cloudflare 资源，只会删除当前仓库的 `.wrangler/state/`。
+
+自动化本地测试可单独执行：
+
+```sh
+npm test
+npm run test:local
+```
+
+`npm test` 使用内存 D1 repository、R2 bucket 和 Cache API double。`npm run test:local` 还会在隔离且不持久化的 Wrangler 运行时中启动完整 Worker，验证初始化、本地 D1、本地 R2、上传、缓存读取和站点配置；两个命令都不会连接生产资源。
+
+只验证部署包而不发布：
+
+```sh
+npx wrangler deploy --dry-run
+```
+
+## 项目结构
+
+```text
+src/                 Worker、认证、D1 repository、R2 service
+public/              无框架依赖的浏览器应用
+migrations/          可幂等执行的 D1 migration
+local-tests/         使用本地 D1/R2/cache 的完整 Worker 集成测试
+scripts/             资源初始化与部署逻辑
+skills/img-hub/      API Key 客户端与可复用 Agent Skill
+extension/           Chrome、Edge、Firefox 共用的插件源码和构建脚本
+docs/                GitHub Pages 中英文部署指引
+.github/workflows/   CI、稳定 Cloudflare 部署、版本发布与文档工作流
+```
+
+## 运维说明
+
+- 应用限制每个文件最大 100 MB、每条文本最大 1 MB；Cloudflare 套餐的请求限制可能更低。
+- R2 生命周期删除 object 后，D1 元数据可能仍然存在，此时公开 URL 返回 404，所有者可在列表中删除这条失效记录。
+- 缩短保留时间前请备份 D1 与 R2。
+- 不要提交 `wrangler.generated.json`、`.wrangler/`、API Token 或 Cookie 文件；仓库已忽略这些路径。
+
+## License
+
+MIT
