@@ -48,8 +48,8 @@ export function buildObjectKey(userId, kind, directory, name) {
 }
 
 export function buildPublicUrl(origin, publicId, version) {
-    if (!/^pub_[a-f0-9]{32}$/.test(publicId)) {
+    if (!/^[a-f0-9]{32}$/.test(publicId)) {
         throw new Error("Invalid public identifier");
     }
-    return `${origin.replace(/\/$/, "")}/${publicId}?v=${Number(version)}`;
+    return `${origin.replace(/\/$/, "")}/pub/${publicId}?v=${Number(version)}`;
 }

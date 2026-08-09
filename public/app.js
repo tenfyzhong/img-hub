@@ -95,13 +95,13 @@ function setLanguage(language, persist = true) {
     }
 }
 
-function notify(message, error = false) {
+function notify(message, error = false, duration = 4200) {
     const toast = byId("toast");
     toast.textContent = message;
     toast.classList.toggle("error", error);
     show(toast);
     clearTimeout(notify.timer);
-    notify.timer = setTimeout(() => show(toast, false), 4200);
+    notify.timer = setTimeout(() => show(toast, false), duration);
 }
 
 let refreshSessionPromise = null;
@@ -536,10 +536,28 @@ async function loadResources() {
     }
 }
 
-async function copyText(value, message = t("message.urlCopied")) {
+const copySuccessTimers = new WeakMap();
+
+function animateCopySuccess(feedbackElement) {
+    if (!feedbackElement) return;
+    clearTimeout(copySuccessTimers.get(feedbackElement));
+    feedbackElement.classList.remove("copy-success");
+    void feedbackElement.offsetWidth;
+    feedbackElement.classList.add("copy-success");
+    copySuccessTimers.set(feedbackElement, setTimeout(() => {
+        feedbackElement.classList.remove("copy-success");
+        copySuccessTimers.delete(feedbackElement);
+    }, 650));
+}
+
+async function copyText(value, message = t("message.urlCopied"), {
+    duration = 4200,
+    feedbackElement,
+} = {}) {
     try {
         await navigator.clipboard.writeText(value);
-        notify(message);
+        animateCopySuccess(feedbackElement);
+        notify(message, false, duration);
     } catch {
         window.prompt(t("resource.copyPrompt"), value);
     }
@@ -1248,16 +1266,21 @@ function generateForForm(form) {
     return password;
 }
 
-byId("generate-user-password").addEventListener("click", () => generateForForm(byId("user-form")));
-byId("copy-user-password").addEventListener("click", () => copyText(
+byId("generate-user-password").addEventListener("click", () => {
+    const password = generateForForm(byId("user-form"));
+    return copyText(password, t("message.passwordGeneratedCopied"), { duration: 2000 });
+});
+byId("copy-user-password").addEventListener("click", (event) => copyText(
     byId("user-form").elements.password.value,
     t("message.passwordCopied"),
+    { duration: 2000, feedbackElement: event.currentTarget },
 ));
 
 byId("generate-reset-password").addEventListener("click", () => generateForForm(byId("reset-password-form")));
-byId("copy-reset-password").addEventListener("click", () => copyText(
+byId("copy-reset-password").addEventListener("click", (event) => copyText(
     byId("reset-password-form").elements.password.value,
     t("message.passwordCopied"),
+    { duration: 2000, feedbackElement: event.currentTarget },
 ));
 byId("cancel-password-reset").addEventListener("click", () => byId("password-reset-dialog").close());
 byId("reset-password-form").addEventListener("submit", (event) => {

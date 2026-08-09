@@ -178,7 +178,7 @@ Keep route handling thin. Put reusable authorization, validation, persistence, o
 - Every resource row records `created_by`.
 - A user may list, replace, and delete only their own resources.
 - R2 keys are isolated beneath `users/{user-id}/file/` and `users/{user-id}/text/`.
-- New public routes are `/file/{opaque-public-id}` and `/text/{opaque-public-id}`; generated URLs must not expose usernames, internal directories, or file names. Keep legacy username routes read-only for compatibility.
+- Files and text share the single public route `/pub/{32-character-opaque-public-id}`. Public IDs are lowercase hexadecimal without a `pub_` prefix. Generated URLs must not expose the resource kind, usernames, internal directories, or file names. Do not serve the former root, `/file/`, `/text/`, prefixed-ID, or username-based public routes.
 - `resource_sharing` owns opaque public IDs and text formats so schema initialization remains idempotent across Deploy button, CLI, and GitHub deployment paths.
 - New file and text names contain millisecond UTC timestamps; a blank text name is generated from its format.
 - `resource_hashes` stores owner-scoped MD5 metadata for instant upload. Never match another user's hash, and always copy a match into an independent R2 object so replacement, deletion, moderation, and retention remain resource-local.
@@ -245,6 +245,8 @@ Keep route handling thin. Put reusable authorization, validation, persistence, o
 - `ci.yml` is secret-free and validates pull requests to `develop`/`main` plus pushes to `develop`.
 - `deploy.yml` validates every stable `main` update, including fork synchronization, and deploys only when that repository has both Cloudflare credentials.
 - `release.yml` accepts matching `v*` tags contained in `main`, shares the `cloudflare-production` concurrency lock, builds both extension packages, creates a GitHub Release, and conditionally publishes configured stores.
+- `destroy-cloudflare.yml` is manual-only, runs only from `main`, shares the production concurrency lock, requires the exact repository plus an irreversible confirmation phrase and checkbox, and targets the same repository-specific resource prefix as deployment.
+- Cloudflare destruction must discover exact D1 and Turnstile matches and reject ambiguous names or any R2 bucket lock before the first mutation. It then removes the Worker, every R2 object and bucket, D1, and the managed Turnstile widget. Never execute it without explicit authorization for a disposable deployment.
 - Never use `pull_request_target` to execute untrusted repository code with Secrets.
 - Do not weaken workflow permissions or expose Secrets to pull request jobs.
 

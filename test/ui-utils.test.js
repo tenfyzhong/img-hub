@@ -21,10 +21,10 @@ test("share formats provide raw URL, Markdown, and safe HTML", () => {
         kind: "file",
         name: 'lake".png',
         contentType: "image/png",
-        url: "https://img.example.com/pub_abc?v=1754481600000&download=1",
+        url: "https://img.example.com/pub/0123456789abcdef0123456789abcdef?v=1754481600000&download=1",
     });
 
-    assert.equal(formats.url, "https://img.example.com/pub_abc?v=1754481600000&download=1");
+    assert.equal(formats.url, "https://img.example.com/pub/0123456789abcdef0123456789abcdef?v=1754481600000&download=1");
     assert.match(formats.markdown, /^!\[/);
     assert.match(formats.html, /^<img /);
     assert.match(formats.html, /&quot;/);

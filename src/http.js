@@ -29,13 +29,12 @@ export function assertSameOrigin(request) {
 
 export function routePublicResource(pathname) {
     const rawParts = pathname.split("/").filter(Boolean);
-    if (rawParts.length !== 1) {
+    if (rawParts.length !== 2
+        || rawParts[0] !== "pub"
+        || !/^[a-f0-9]{32}$/.test(rawParts[1])) {
         return null;
     }
-    if (!/^pub_[a-f0-9]{32}$/.test(rawParts[0])) {
-        return null;
-    }
-    return { publicId: rawParts[0] };
+    return { publicId: rawParts[1] };
 }
 
 export function json(data, status = 200, headers = {}) {
