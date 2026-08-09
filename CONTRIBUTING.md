@@ -228,6 +228,8 @@ There is no default administrator password or public recovery endpoint. The fixe
 
 Remote recovery requires `npm run admin:reset -- --remote --database <D1_DATABASE_NAME>` and directly modifies D1. Never run it against a shared or production database for routine contribution testing. A live recovery test requires explicit authorization and a disposable database.
 
+Changes to `.github/workflows/reset-admin-password.yml` should be validated by `test/admin-recovery.test.js`. Do not dispatch that workflow merely to test YAML: a live run directly changes the selected D1 database, revokes administrator credentials, and requires explicit authorization plus a disposable deployment.
+
 ### Language testing
 
 Clear the `img-hub-language` local storage key and change the browser's first preferred language. Confirm a `zh` locale opens the Chinese UI and another locale opens English. Then use **EN / 中文**, reload, and confirm the explicit choice persists. Check setup, login, forced password change, all three Upload tabs, the unified resource manager, Security, Administration, dynamic messages, errors, confirmation dialogs, and mobile navigation in both languages. Administrator-configured site appearance is intentionally shared across languages; built-in unsaved welcome copy is localized.

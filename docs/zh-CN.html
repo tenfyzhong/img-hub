@@ -180,6 +180,13 @@ npm run dev:local</code></pre>
         <pre><code>npx wrangler login
 npm run admin:reset -- --remote --database YOUR_D1_DATABASE_NAME</code></pre>
         <p>隐藏输入的新密码是临时密码。确认输出的 <code>administrators_reset</code> 为 <code>1</code>，且 <code>administrator_username</code> 为 <code>admin</code>。恢复会撤销管理员全部 Session 和 API Key，把旧版管理员用户名安全地规范为 <code>admin</code>，仅将原用户名作为公开 URL 别名保留；登录后必须设置不同的新密码。如果重置数量为 <code>0</code>，说明选择了错误或尚未初始化的数据库。</p>
+        <h3>GitHub Actions：重置管理员密码</h3>
+        <ol>
+          <li>打开 <strong>Settings → Secrets and variables → Actions</strong>，创建或更新 <code>IMG_HUB_ADMIN_RESET_PASSWORD</code>，值为 10–256 个字符的新临时密码。现有 <code>CLOUDFLARE_API_TOKEN</code> 必须具备 D1 Edit 权限，同时保留 <code>CLOUDFLARE_ACCOUNT_ID</code>。</li>
+          <li>打开 <strong>Actions → Reset administrator password → Run workflow</strong>，输入已部署 D1 的准确数据库名称，并勾选确认框。</li>
+          <li>确认日志中的 <code>administrators_reset</code> 为 <code>1</code>。使用 <code>admin</code> 登录，立即设置一个不同的正式密码，然后删除临时 Repository Secret。</li>
+        </ol>
+        <div class="callout"><p>该 workflow 只能手动触发，并且绝不会把密码作为 Actions 输入。重置会撤销管理员全部 Session 和 API Key。不要把临时密码填进数据库名、输入框、Issue、截图或日志。</p></div>
       </section>
 
       <section id="moderation">

@@ -28,6 +28,8 @@ test("English and Chinese guides cover every supported deployment path", async (
         assert.match(guide, /caches\.default/);
         assert.match(guide, /site title|站点标题/i);
         assert.match(guide, /admin:reset/);
+        assert.match(guide, /Reset administrator password|重置管理员密码/);
+        assert.match(guide, /IMG_HUB_ADMIN_RESET_PASSWORD/);
         assert.match(guide, /no default password|没有默认密码/i);
         assert.match(guide, /browser language|浏览器语言/i);
         assert.match(guide, /content audit|内容审计/i);
@@ -73,6 +75,8 @@ test("GitHub Pages publishes bilingual deployment documentation", async () => {
         assert.match(guide, /http:\/\/localhost:8787/);
         assert.match(guide, /caches\.default/);
         assert.match(guide, /admin:reset/);
+        assert.match(guide, /Reset administrator password|重置管理员密码/);
+        assert.match(guide, /IMG_HUB_ADMIN_RESET_PASSWORD/);
         assert.match(guide, /no default password|没有默认密码/i);
         assert.match(guide, /browser language|浏览器语言/i);
         assert.match(guide, /content audit|内容审计/i);
