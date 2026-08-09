@@ -42,6 +42,15 @@ li + li { margin-top: 6px; }
 .card p { margin: 0; font-size: 13px; }
 .callout { border-left: 4px solid var(--orange); }
 .callout p { margin: 0; }
+.guide-shot { margin: 22px 0 28px; }
+.guide-shot img { display: block; width: 100%; height: auto; border: 1px solid var(--line); border-radius: 14px; background: #eef1f3; box-shadow: 0 12px 30px rgba(24, 34, 30, .1); }
+.guide-shot figcaption { margin-top: 9px; color: var(--muted); font-size: 12px; line-height: 1.55; }
+.table-scroll { max-width: 100%; overflow-x: auto; margin: 18px 0; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.55); }
+.permission-table { width: 100%; min-width: 620px; border-collapse: collapse; }
+.permission-table th, .permission-table td { padding: 11px 14px; border-bottom: 1px solid var(--line); color: #445149; font-size: 13px; text-align: left; }
+.permission-table th { color: var(--ink); background: rgba(49,92,73,.07); font-size: 11px; letter-spacing: .05em; text-transform: uppercase; }
+.permission-table tr:last-child td { border-bottom: 0; }
+.permission-table code { white-space: nowrap; }
 pre { max-width: 100%; overflow: auto; padding: 17px; border-radius: 12px; color: #eef7f2; background: #20312a; font-size: 12px; line-height: 1.6; }
 code { padding: .12em .35em; border-radius: 5px; background: rgba(49,92,73,.09); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .88em; }
 pre code { padding: 0; background: transparent; }
