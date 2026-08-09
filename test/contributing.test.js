@@ -33,6 +33,8 @@ test("contributor guides document development, tests, and manual verification in
         assert.match(guide, /content audit|内容审计/i);
         assert.match(guide, /disable account|禁用账户/i);
         assert.match(guide, /Turnstile/);
+        assert.match(guide, /IMG_HUB_WECHAT_VERIFY_FILENAME/);
+        assert.match(guide, /IMG_HUB_WECHAT_VERIFY_CONTENT/);
         assert.match(guide, /three failed|3 次失败|三次失败/i);
     }
     assert.match(pullRequestTemplate, /CONTRIBUTING\.md/);
@@ -50,4 +52,6 @@ test("contributor guides document development, tests, and manual verification in
     assert.match(agentGuide, /resource_moderation/);
     assert.match(agentGuide, /login_challenges/);
     assert.match(agentGuide, /Turnstile/);
+    assert.match(agentGuide, /IMG_HUB_WECHAT_VERIFY_FILENAME/);
+    assert.match(agentGuide, /IMG_HUB_WECHAT_VERIFY_CONTENT/);
 });

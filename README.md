@@ -68,10 +68,12 @@ IMG_HUB_BUCKET_NAME=my-hub-files \
 IMG_HUB_D1_LOCATION=apac \
 IMG_HUB_R2_LOCATION=apac \
 IMG_HUB_TURNSTILE_DOMAINS=images.example.com \
+IMG_HUB_WECHAT_VERIFY_FILENAME=30192898bf0120ae25f69bdce9e25e77.txt \
+IMG_HUB_WECHAT_VERIFY_CONTENT=verification-content-from-wechat \
 ./deploy.sh
 ```
 
-Valid D1/R2 location values are controlled by Wrangler. Omit placement variables to let Cloudflare choose. The script discovers the generated `workers.dev` hostname automatically; set the comma-separated `IMG_HUB_TURNSTILE_DOMAINS` only to authorize additional custom hostnames. A widget allows its configured hostname and subdomains, and Cloudflare limits each widget to 10 entries.
+Valid D1/R2 location values are controlled by Wrangler. Omit placement variables to let Cloudflare choose. The script discovers the generated `workers.dev` hostname automatically; set the comma-separated `IMG_HUB_TURNSTILE_DOMAINS` only to authorize additional custom hostnames. A widget allows its configured hostname and subdomains, and Cloudflare limits each widget to 10 entries. The two optional WeChat variables must be provided together; they publish the exact verification content at `/{filename}` without changing the checked-in `public/` directory.
 
 ## Deployment option 3: GitHub Actions
 
@@ -82,11 +84,16 @@ The repository contains focused workflows for secret-free CI, stable Cloudflare 
 3. In the GitHub repository, open **Settings → Secrets and variables → Actions** and add:
    - `CLOUDFLARE_API_TOKEN`
    - `CLOUDFLARE_ACCOUNT_ID`
-4. Open **Actions → Deploy to Cloudflare → Run workflow**, or push to `main`.
+4. If WeChat supplied a site-verification text file, open the **Variables** tab and add both repository variables:
+   - `IMG_HUB_WECHAT_VERIFY_FILENAME`: the issued file name, for example `30192898bf0120ae25f69bdce9e25e77.txt`
+   - `IMG_HUB_WECHAT_VERIFY_CONTENT`: the exact issued file content
+5. Open **Actions → Deploy to Cloudflare → Run workflow**, or push to `main`.
+
+WeChat verification is optional. Configure both variables or neither; a partial or unsafe configuration fails before Cloudflare resources are changed. The filename must be a root-level `.txt` name made from letters, numbers, `_`, or `-`, with no directory or spaces. Deployment copies the static application to an isolated temporary directory, writes the content without adding a newline, deploys it at a URL such as `https://images.example.com/30192898bf0120ae25f69bdce9e25e77.txt`, and removes the temporary copy. The verification content becomes public at that URL, so it belongs in a Repository Variable rather than source control. `release.yml` uses the same variables when a tagged release deploys.
 
 The exact custom-token permissions are **Account Settings Read**, **Workers Scripts Edit**, **D1 Edit**, **Workers R2 Storage Edit**, **Turnstile Edit**, **User Details Read**, and **Memberships Read**. Restrict **Account Resources** to **Include → Specific account** for the deployment account. The default `workers.dev` deployment does not need KV, Tail, DNS, or Zone permissions; add **Workers Routes Edit** only when you later configure a route on a specific zone.
 
-`main` is the stable distribution branch; development is integrated through `develop`. The same checked-in deployment workflow works in this repository and every fork. GitHub resolves secrets from the repository running the workflow, so a fork deploys only to the fork owner's Cloudflare account. By default, the workflow uses `img-hub-{repository-id}` as the Worker/D1/R2/Turnstile prefix to avoid collisions. Set the Actions repository variable `IMG_HUB_RESOURCE_PREFIX` to choose another prefix; the CLI also accepts `IMG_HUB_WORKER_NAME`, `IMG_HUB_DATABASE_NAME`, `IMG_HUB_BUCKET_NAME`, and `IMG_HUB_TURNSTILE_DOMAINS`.
+`main` is the stable distribution branch; development is integrated through `develop`. The same checked-in deployment workflow works in this repository and every fork. GitHub resolves secrets and variables from the repository running the workflow, so a fork deploys only to the fork owner's Cloudflare account and publishes only that fork's verification file. By default, the workflow uses `img-hub-{repository-id}` as the Worker/D1/R2/Turnstile prefix to avoid collisions. Set the Actions repository variable `IMG_HUB_RESOURCE_PREFIX` to choose another prefix; the CLI also accepts `IMG_HUB_WORKER_NAME`, `IMG_HUB_DATABASE_NAME`, `IMG_HUB_BUCKET_NAME`, `IMG_HUB_TURNSTILE_DOMAINS`, `IMG_HUB_WECHAT_VERIFY_FILENAME`, and `IMG_HUB_WECHAT_VERIFY_CONTENT`.
 
 The secret-free CI workflow validates pull requests to `develop` and `main`, while the stable deployment workflow verifies every `main` update before running `npm run deploy:cloudflare`. That command creates D1/R2/Turnstile resources if missing, applies the initial D1 schema, and deploys the Worker with its daily retention schedule and Turnstile secret. Fork owners must enable Actions once before a synchronized `main` can build. If the two Cloudflare secrets are absent, verification still runs and deployment is explicitly skipped. See [CONTRIBUTING.md](CONTRIBUTING.md) for branch and release rules. Template-created repositories have independent histories and do not have GitHub's **Sync fork** path.
 

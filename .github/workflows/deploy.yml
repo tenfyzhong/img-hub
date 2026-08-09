@@ -45,3 +45,5 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           IMG_HUB_RESOURCE_PREFIX: ${{ vars.IMG_HUB_RESOURCE_PREFIX || format('img-hub-{0}', github.event.repository.id) }}
           IMG_HUB_TURNSTILE_DOMAINS: ${{ vars.IMG_HUB_TURNSTILE_DOMAINS }}
+          IMG_HUB_WECHAT_VERIFY_FILENAME: ${{ vars.IMG_HUB_WECHAT_VERIFY_FILENAME }}
+          IMG_HUB_WECHAT_VERIFY_CONTENT: ${{ vars.IMG_HUB_WECHAT_VERIFY_CONTENT }}
