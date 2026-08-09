@@ -78,11 +78,13 @@ D1/R2 可用区域由 Wrangler 决定；不设置区域变量时由 Cloudflare �
 仓库只保留职责明确的工作流：无 Secret 的 CI、稳定 Cloudflare 部署、Tag Release、浏览器插件包和 GitHub Pages 文档。
 
 1. 需要使用 **Sync fork** 持续更新时请选择 Fork；需要独立仓库时可从模板创建。仓库维护者需先在 **Settings → General → Template repository** 开启一次模板选项，GitHub 才会显示 **Use this template**。
-2. 创建可以编辑 Workers、D1、R2 和 Turnstile 资源的 Cloudflare API Token。登录验证自动配置需要 **Turnstile Sites Write**。
+2. 按照带截图的 [Cloudflare 最小权限 Token 指引](https://tenfy.cn/img-hub/zh-CN.html#cloudflare-token)，选择 **创建自定义令牌（Create Custom Token）**，不要使用 Global API Key 或宽泛的内置模板。登录验证自动配置需要 **Turnstile Sites Write**。
 3. 打开 GitHub 仓库的 **Settings → Secrets and variables → Actions**，添加：
    - `CLOUDFLARE_API_TOKEN`
    - `CLOUDFLARE_ACCOUNT_ID`
 4. 打开 **Actions → Deploy to Cloudflare → Run workflow**，或向 `main` 分支推送提交。
+
+自定义 Token 应包含且只包含：**Account Settings Read**、**Workers Scripts Edit**、**D1 Edit**、**Workers R2 Storage Edit**、**Turnstile Edit**、**User Details Read** 和 **Memberships Read**。在 **Account Resources** 中把范围限制为 **Include → 指定账号（Specific account）**。默认 `workers.dev` 部署不需要 KV、Tail、DNS 或 Zone 权限；只有以后给特定 Zone 配置 Route 时才增加 **Workers Routes Edit**。
 
 `main` 是稳定分发分支，开发代码通过 `develop` 集成。同一份部署 workflow 同时适用于本仓库和所有 fork。GitHub 只读取当前运行仓库自己的 Secrets，因此 fork 只会部署到 fork 所有者自己的 Cloudflare 账号。默认资源前缀是 `img-hub-{repository-id}`，避免本仓库与不同 fork 的 Worker、D1、R2、Turnstile 重名。可添加 Actions Repository Variable `IMG_HUB_RESOURCE_PREFIX` 自定义前缀；CLI 还支持 `IMG_HUB_WORKER_NAME`、`IMG_HUB_DATABASE_NAME`、`IMG_HUB_BUCKET_NAME` 和 `IMG_HUB_TURNSTILE_DOMAINS`。
 

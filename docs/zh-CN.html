@@ -16,7 +16,7 @@
     <aside>
       <strong>目录</strong>
       <nav>
-        <a href="#choose">选择部署方式</a><a href="#button">Cloudflare 按钮</a><a href="#cli">命令行部署</a><a href="#github">GitHub Actions</a><a href="#api-keys">API Key 与 Skill</a><a href="#extension">浏览器插件</a><a href="#release">版本发布</a><a href="#first-run">首次启动</a><a href="#language">语言</a><a href="#admin-recovery">管理员找回</a><a href="#moderation">管理端与内容审计</a><a href="#lifecycle">R2 保留策略</a><a href="#paths">存储路径</a><a href="#cache">公开读取缓存</a><a href="#appearance">站点外观</a><a href="#local">本地开发</a><a href="#troubleshooting">故障排查</a>
+        <a href="#choose">选择部署方式</a><a href="#button">Cloudflare 按钮</a><a href="#cli">命令行部署</a><a href="#cloudflare-token">Cloudflare Token</a><a href="#github">GitHub Actions</a><a href="#api-keys">API Key 与 Skill</a><a href="#extension">浏览器插件</a><a href="#release">版本发布</a><a href="#first-run">首次启动</a><a href="#language">语言</a><a href="#admin-recovery">管理员找回</a><a href="#moderation">管理端与内容审计</a><a href="#lifecycle">R2 保留策略</a><a href="#paths">存储路径</a><a href="#cache">公开读取缓存</a><a href="#appearance">站点外观</a><a href="#local">本地开发</a><a href="#troubleshooting">故障排查</a>
       </nav>
     </aside>
     <main>
@@ -65,11 +65,55 @@ IMG_HUB_TURNSTILE_DOMAINS=images.example.com \
         <p>脚本可以重复执行，而且不会删除 D1 数据库或 R2 bucket。生成的 <code>workers.dev</code> 域名会自动识别；<code>IMG_HUB_TURNSTILE_DOMAINS</code> 用于添加逗号分隔的自定义域名。</p>
       </section>
 
+      <section id="cloudflare-token">
+        <h2>创建 Cloudflare 部署 Token</h2>
+        <p>GitHub Actions 应使用 <strong>用户 API Token</strong>。进入 <strong>My Profile → API Tokens</strong>，点击 <strong>Create Token</strong>，然后选择 <strong>创建自定义令牌（Create Custom Token）</strong>。这是推荐的最小权限方式，因为 Cloudflare 没有一个内置模板能与 ImgHub 的权限完全一致。不要使用旧式 <strong>Global API Key</strong>。</p>
+        <figure class="guide-shot">
+          <img src="assets/cloudflare-token-create.svg" alt="脱敏的 Cloudflare Dashboard 示意图，突出 API Tokens、Create Token 和 Create Custom Token" loading="lazy" decoding="async">
+          <figcaption>脱敏界面示意图——有意省略账号身份与凭据。Cloudflare 后续可能调整标签或布局。</figcaption>
+        </figure>
+        <p><strong>Edit Cloudflare Workers</strong> 模板虽然更快，但权限比 ImgHub 所需范围更大：它包含 KV、Tail 和 Zone Route，却没有 D1 与 Turnstile。如果从该模板开始，请删除无用权限，再补充 D1 和 Turnstile。下面的自定义权限更清晰，也更符合最小权限原则。</p>
+
+        <h3>只添加以下七项权限</h3>
+        <div class="table-scroll">
+          <table class="permission-table">
+            <thead><tr><th>范围</th><th>权限</th><th>访问级别</th><th>ImgHub 用途</th></tr></thead>
+            <tbody>
+              <tr><td>Account</td><td>Account Settings</td><td>Read</td><td>让 Wrangler 识别并校验所选账号。</td></tr>
+              <tr><td>Account</td><td>Workers Scripts</td><td>Edit</td><td>部署 Worker、静态资源、Binding、定时任务和 Secret。</td></tr>
+              <tr><td>Account</td><td>D1</td><td>Edit</td><td>创建或复用 D1，并应用初始 Schema。</td></tr>
+              <tr><td>Account</td><td>Workers R2 Storage</td><td>Edit</td><td>创建或复用 R2 Bucket，并配置部署 Binding。</td></tr>
+              <tr><td>Account</td><td>Turnstile</td><td>Edit</td><td>创建、读取和更新登录验证 Widget。</td></tr>
+              <tr><td>User</td><td>User Details</td><td>Read</td><td>允许 Wrangler 完成身份校验。</td></tr>
+              <tr><td>User</td><td>Memberships</td><td>Read</td><td>允许 Wrangler 确认用户所属账号。</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>合并写法是 <strong>Account Settings Read</strong>、<strong>Workers Scripts Edit</strong>、<strong>D1 Edit</strong>、<strong>Workers R2 Storage Edit</strong>、<strong>Turnstile Edit</strong>、<strong>User Details Read</strong> 和 <strong>Memberships Read</strong>。Cloudflare 的不同界面可能把写权限显示为 <em>Write</em> 或 <em>Edit</em>；例如 <strong>Turnstile Sites Write</strong> 表示的就是这里需要的 Turnstile 写权限。</p>
+        <figure class="guide-shot">
+          <img src="assets/cloudflare-token-permissions.svg" alt="脱敏的自定义 Token 权限界面示意图，列出 ImgHub 所需的七项最小权限" loading="lazy" decoding="async">
+          <figcaption>Workers、D1、R2、Turnstile、Account Settings 选择 Account；身份和成员关系读取选择 User。</figcaption>
+        </figure>
+
+        <h3>限制账号范围并安全保存一次</h3>
+        <ol>
+          <li>在 <strong>Account Resources</strong> 选择 <strong>Include → 指定账号（Specific account）→ 实际部署账号</strong>。除非一个仓库确实要管理全部账号，否则不要选择所有账号。</li>
+          <li>默认 <code>workers.dev</code> 部署不需要任何 Zone 权限。只有以后给特定 Zone 配置 Worker Route 时，才增加 <strong>Zone → Workers Routes Edit</strong>。</li>
+          <li>点击 <strong>Continue to summary</strong>，确认七项权限和一个账号无误，然后点击 <strong>Create Token</strong>。</li>
+          <li>把只显示一次的 Secret 直接保存到 GitHub Actions Secret <code>CLOUDFLARE_API_TOKEN</code>；再把所选账号 ID 单独保存为 <code>CLOUDFLARE_ACCOUNT_ID</code>。</li>
+        </ol>
+        <figure class="guide-shot">
+          <img src="assets/cloudflare-token-scope.svg" alt="脱敏的 Cloudflare Token 范围界面示意图，显示 Include Specific account 与两个 GitHub Actions Secret 名称" loading="lazy" decoding="async">
+          <figcaption>真实 Secret 只显示一次。不要把它放进截图、Issue、日志、README、命令参数或提交的环境文件。</figcaption>
+        </figure>
+        <div class="callout"><p>请以 Cloudflare 当前官方文档为准：<a href="https://developers.cloudflare.com/fundamentals/api/get-started/create-token/">创建 Token</a>、<a href="https://developers.cloudflare.com/fundamentals/api/reference/template/">内置模板</a>和<a href="https://developers.cloudflare.com/fundamentals/api/reference/permissions/">权限名称</a>。如果 Dashboard 文案变化，请重新核对。</p></div>
+      </section>
+
       <section id="github">
         <h2>GitHub Actions 部署</h2>
         <ol>
           <li>需要 <strong>Sync fork</strong> 更新时 Fork 仓库；需要独立历史时从模板创建。维护者需要先在 <strong>Settings → General → Template repository</strong> 开启模板选项。</li>
-          <li>创建可编辑 Worker Scripts、D1、R2 与 Turnstile 的 Cloudflare Token。自动验证配置需要 <strong>Turnstile Sites Write</strong>。</li>
+          <li>按照上面的<a href="#cloudflare-token">最小权限 Token 指引</a>创建 Cloudflare Token；自动验证配置需要 Turnstile 写权限。</li>
           <li>添加 Action Secrets：<code>CLOUDFLARE_API_TOKEN</code> 和 <code>CLOUDFLARE_ACCOUNT_ID</code>。</li>
           <li>手工运行 <strong>Deploy to Cloudflare</strong>，或推送到 <code>main</code>。</li>
         </ol>

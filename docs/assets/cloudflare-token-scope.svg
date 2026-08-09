@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="760" viewBox="0 0 1280 760" role="img">
+  <title>Cloudflare custom API token illustration showing account scope, review, and safe secret storage</title>
+  <defs>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="12" stdDeviation="18" flood-color="#102019" flood-opacity="0.14"/>
+    </filter>
+  </defs>
+  <rect width="1280" height="760" fill="#eef1f3"/>
+  <rect x="40" y="30" width="1200" height="700" rx="18" fill="#ffffff" filter="url(#shadow)"/>
+  <rect x="40" y="30" width="1200" height="64" rx="18" fill="#f8fafb"/>
+  <rect x="40" y="76" width="1200" height="18" fill="#f8fafb"/>
+  <circle cx="78" cy="62" r="9" fill="#ff6633"/>
+  <text x="100" y="70" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700" fill="#172b35">Token resource scope and review</text>
+
+  <circle cx="98" cy="148" r="22" fill="#f48120"/>
+  <text x="98" y="156" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="800" fill="#ffffff">2</text>
+  <text x="134" y="156" font-family="Inter, Arial, sans-serif" font-size="23" font-weight="750" fill="#172b35">Account Resources</text>
+  <rect x="84" y="182" width="1112" height="92" rx="10" fill="#f9fbfb" stroke="#d6e0e3"/>
+  <text x="110" y="214" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700" fill="#667a83">OPERATOR</text>
+  <text x="366" y="214" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700" fill="#667a83">VALUE</text>
+  <rect x="110" y="226" width="220" height="34" rx="6" fill="#ffffff" stroke="#b9c7cc"/>
+  <text x="126" y="249" font-family="Inter, Arial, sans-serif" font-size="15" fill="#273f49">Include</text>
+  <rect x="366" y="226" width="794" height="34" rx="6" fill="#ffffff" stroke="#b9c7cc"/>
+  <text x="382" y="249" font-family="Inter, Arial, sans-serif" font-size="15" fill="#273f49">Specific account  →  Your Cloudflare account</text>
+
+  <text x="84" y="322" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="750" fill="#172b35">Zone Resources</text>
+  <rect x="84" y="340" width="1112" height="54" rx="10" fill="#f2f5f6"/>
+  <text x="110" y="373" font-family="Inter, Arial, sans-serif" font-size="15" fill="#60747d">No Zone permissions for the default workers.dev deployment.</text>
+
+  <circle cx="98" cy="448" r="22" fill="#f48120"/>
+  <text x="98" y="456" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="800" fill="#ffffff">3</text>
+  <text x="134" y="456" font-family="Inter, Arial, sans-serif" font-size="23" font-weight="750" fill="#172b35">Continue to summary → Create Token</text>
+  <rect x="84" y="482" width="1112" height="88" rx="10" fill="#fff8f4" stroke="#f0b08d"/>
+  <text x="110" y="516" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="700" fill="#8f3b17">The secret is displayed once.</text>
+  <text x="110" y="546" font-family="Inter, Arial, sans-serif" font-size="15" fill="#536b74">Copy it directly to GitHub Actions secret CLOUDFLARE_API_TOKEN. Never paste it into docs, issues, logs, or screenshots.</text>
+
+  <rect x="84" y="606" width="532" height="82" rx="10" fill="#edf6f2"/>
+  <text x="110" y="638" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700" fill="#315c49">GITHUB ACTIONS SECRET</text>
+  <text x="110" y="670" font-family="Inter, Arial, sans-serif" font-size="17" fill="#273f49">CLOUDFLARE_API_TOKEN</text>
+  <rect x="644" y="606" width="552" height="82" rx="10" fill="#edf6f2"/>
+  <text x="670" y="638" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700" fill="#315c49">GITHUB ACTIONS SECRET</text>
+  <text x="670" y="670" font-family="Inter, Arial, sans-serif" font-size="17" fill="#273f49">CLOUDFLARE_ACCOUNT_ID</text>
+</svg>
