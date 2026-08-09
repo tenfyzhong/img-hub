@@ -152,7 +152,7 @@ npm run build:extension</code></pre>
 
       <section id="release">
         <h2>GitHub Release 与商店发布</h2>
-        <p>先修改 <code>package.json</code> 的纯数字版本，将发布代码合入 <code>main</code>，再推送匹配 Tag，例如 <code>v0.2.0</code>。发布 workflow 会拒绝不属于 <code>main</code> 的 Tag，运行测试并构建两个通用插件包；配置 Cloudflare 凭据时部署到当前仓库自己的账号；最后创建 GitHub Release。</p>
+        <p>先修改 <code>package.json</code> 的纯数字版本，将发布代码合入 <code>main</code>，再推送匹配 Tag，例如 <code>v0.3.0</code>。发布 workflow 会拒绝不属于 <code>main</code> 的 Tag，运行测试并构建两个通用插件包；配置 Cloudflare 凭据时部署到当前仓库自己的账号；最后创建 GitHub Release。</p>
         <p>每个商店只有在完整配置对应 Secrets 时才自动发布：</p>
         <ul>
           <li>Chrome：<code>CHROME_PUBLISHER_ID</code>、<code>CHROME_EXTENSION_ID</code>、<code>CHROME_CLIENT_ID</code>、<code>CHROME_CLIENT_SECRET</code>、<code>CHROME_REFRESH_TOKEN</code></li>
