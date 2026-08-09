@@ -15,8 +15,8 @@ ImgHub is a multi-user file and text hub built only for Cloudflare Workers, D1, 
 - Every password-setting form requires confirmation and supports show/hide controls. Administrators can generate and copy strong temporary passwords.
 - Every D1 resource row records its creator. Users can only list, replace, or delete their own resources.
 - Each user has isolated R2 roots: `users/{user-id}/file/` and `users/{user-id}/text/`.
-- New public paths use opaque random IDs such as `/file/pub_7b62…` and `/text/pub_91ac…`; usernames, directories, and file names are not exposed. Legacy username paths remain readable for compatibility.
-- Replacing content keeps the opaque public path and R2 object key. Only the cache version changes, for example `/file/pub_7b62…?v=2`.
+- Files and text share opaque public paths such as `/pub/7b62…`; the resource kind, username, directory, and file name are not exposed. Former root, `/file/`, `/text/`, prefixed `pub_` IDs, and username-based public paths are not supported.
+- Replacing content keeps the opaque public path and R2 object key. Only the cache version changes, for example `/pub/7b62…?v=2`.
 - The **Upload** workspace has a full-width row of three equal-height tabs for file upload, text publishing, and remote-file import. The separate **Manage** entry presents files and texts together in one directory tree and resource library.
 - File selection, drag-and-drop, and pasting files or clipboard images start uploads immediately with progress. Uploaded and historical items can copy raw URL, Markdown, or HTML snippets.
 - New file and text names include a millisecond UTC timestamp so the same original name can be published repeatedly. A text name is optional and generated from its format; text results expose the same URL, Markdown, and HTML copy actions as file uploads.
@@ -26,7 +26,7 @@ ImgHub is a multi-user file and text hub built only for Cloudflare Workers, D1, 
 - Administrators set the R2 retention period in the UI. The deployed Worker defaults to 91 days and removes expired objects in a daily scheduled maintenance run without storing Cloudflare management credentials.
 - Users can create named, revocable API keys. Only a hash of each key is stored, and the cleartext value is shown once.
 - The bundled Agent Skill uploads and manages resources with an API key; the browser extension supports Chrome, Edge, and Firefox with a configurable deployment URL.
-- Versioned `/file` and `/text` reads use `caches.default`; after a small moderation check in D1, cache hits skip the R2 object read.
+- Versioned `/pub/{opaque-id}` reads use `caches.default`; after a small moderation check in D1, cache hits skip the R2 object read.
 - Administrators can customize the site title, tagline, welcome title, and welcome description.
 - The application has no third-party storage channels. It uses Cloudflare R2 only.
 
@@ -89,6 +89,14 @@ The exact custom-token permissions are **Account Settings Read**, **Workers Scri
 `main` is the stable distribution branch; development is integrated through `develop`. The same checked-in deployment workflow works in this repository and every fork. GitHub resolves secrets from the repository running the workflow, so a fork deploys only to the fork owner's Cloudflare account. By default, the workflow uses `img-hub-{repository-id}` as the Worker/D1/R2/Turnstile prefix to avoid collisions. Set the Actions repository variable `IMG_HUB_RESOURCE_PREFIX` to choose another prefix; the CLI also accepts `IMG_HUB_WORKER_NAME`, `IMG_HUB_DATABASE_NAME`, `IMG_HUB_BUCKET_NAME`, and `IMG_HUB_TURNSTILE_DOMAINS`.
 
 The secret-free CI workflow validates pull requests to `develop` and `main`, while the stable deployment workflow verifies every `main` update before running `npm run deploy:cloudflare`. That command creates D1/R2/Turnstile resources if missing, applies the initial D1 schema, and deploys the Worker with its daily retention schedule and Turnstile secret. Fork owners must enable Actions once before a synchronized `main` can build. If the two Cloudflare secrets are absent, verification still runs and deployment is explicitly skipped. See [CONTRIBUTING.md](CONTRIBUTING.md) for branch and release rules. Template-created repositories have independent histories and do not have GitHub's **Sync fork** path.
+
+### Destroy Cloudflare deployment
+
+> **Danger — destructive and irreversible.** Use this only for a disposable test deployment. It permanently deletes the named Worker, every object in the R2 bucket and the bucket itself, the D1 database, and the managed Turnstile widget. It creates no backup, and deleted data cannot be recovered.
+
+Open **Actions → DESTRUCTIVE: Destroy Cloudflare deployment → Run workflow** on `main`. Type the repository's exact `owner/repository` name, type `DESTROY owner/repository` in the second field, and select the permanent data-loss acknowledgement. The workflow refuses other branches, mismatched text, an unchecked warning, or missing Cloudflare Secrets. It uses the same repository-specific `IMG_HUB_RESOURCE_PREFIX` as `deploy.yml`, so the original repository and each fork target only their own named deployment.
+
+The workflow first removes the Worker to stop new writes, then empties and deletes R2, deletes D1, and finally deletes Turnstile. A bucket lock prevents object deletion; remove the lock only after confirming the target and rerun the workflow. DNS records, manually created Worker routes, and other Cloudflare resources outside this named deployment are not deleted. This workflow never affects local `.wrangler/state/`; use `npm run local:reset` for disposable local data instead.
 
 ### Enable the guide site
 
@@ -210,14 +218,14 @@ users/{alice-user-id}/file/trips/2026/lake-20260806T040506123.png
 and published as:
 
 ```text
-/file/pub_7b62f18c6d304476a5edc8a4de176cb1?v=1
+/pub/7b62f18c6d304476a5edc8a4de176cb1?v=1
 ```
 
 Text follows the same model:
 
 ```text
 users/{alice-user-id}/text/notes/hello-20260806T040506123.md
-/text/pub_91ac1f75e0c84353bb9eca92c4f828a0?v=1
+/pub/91ac1f75e0c84353bb9eca92c4f828a0?v=1
 ```
 
 Subdirectories are virtual R2 prefixes. `.` and `..` segments are rejected. New names receive a millisecond UTC timestamp before their extension; blank text names become timestamped `.md` or `.html` names. D1 maps each resource to a random public ID, so its URL reveals none of the internal path. A replacement writes to the same R2 key, increments the D1 version, and returns the same public path with a new `?v=` parameter. Deletion removes the R2 object and resource metadata while retaining its activity event.
@@ -226,7 +234,7 @@ Non-image files are served as downloads. Legacy or API-created plain text is ser
 
 ### Public read caching
 
-Correctly versioned GET requests such as `/file/pub_7b62…?v=3` and `/text/pub_91ac…?v=2` are stored with the Cloudflare Cache API through `caches.default`. Every request first performs a small D1 availability check so blocked content and disabled accounts cannot bypass moderation through an old cache entry. An allowed cache hit then avoids the R2 object read. Responses expose `X-ImgHub-Cache: MISS` on the first read and `HIT` on a cached read.
+Correctly versioned GET requests such as `/pub/7b62…?v=3` are stored with the Cloudflare Cache API through `caches.default`. Every request first performs a small D1 availability check so blocked content and disabled accounts cannot bypass moderation through an old cache entry. An allowed cache hit then avoids the R2 object read. Responses expose `X-ImgHub-Cache: MISS` on the first read and `HIT` on a cached read. Invalid, missing, deleted, blocked, and expired public resources return the localized ImgHub 404 page without exposing the reason.
 
 Only a single positive numeric `v` matching the current D1 version is stored. Unversioned URLs, incorrect versions, additional query parameters, and HEAD requests return `X-ImgHub-Cache: BYPASS`; this avoids unbounded cache-key pollution. Versioned responses use one-year shared-cache retention, while browser `max-age=0` requires the moderation check on every visit. Replacement returns a new version URL, so it misses the old cache without changing the stable path.
 

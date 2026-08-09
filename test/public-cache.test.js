@@ -13,7 +13,7 @@ function createFixture(kind) {
         contentType: kind === "text" ? "text/plain; charset=utf-8" : "image/png",
         textFormat: kind === "text" ? "plain" : undefined,
         version: 1754481600000,
-        publicId: "pub_0123456789abcdef0123456789abcdef",
+        publicId: "0123456789abcdef0123456789abcdef",
     };
     const stored = new Map();
     const pending = [];
@@ -68,7 +68,7 @@ function createFixture(kind) {
 for (const kind of ["file", "text"]) {
     test(`versioned ${kind} reads check availability then use edge cache before R2`, async () => {
         const fixture = createFixture(kind);
-        const url = `https://images.example.com/${fixture.route.publicId}?v=1754481600000`;
+        const url = `https://images.example.com/pub/${fixture.route.publicId}?v=1754481600000`;
         const first = await servePublicResource({
             request: new Request(url),
             ...fixture,
@@ -95,7 +95,7 @@ for (const kind of ["file", "text"]) {
 
 test("unversioned, mismatched-version, and HEAD reads bypass edge storage", async () => {
     const fixture = createFixture("file");
-    const base = `https://images.example.com/${fixture.route.publicId}`;
+    const base = `https://images.example.com/pub/${fixture.route.publicId}`;
     for (const request of [
         new Request(base),
         new Request(`${base}?v=999`),
@@ -109,7 +109,7 @@ test("unversioned, mismatched-version, and HEAD reads bypass edge storage", asyn
 
 test("a blocked resource cannot be served from an existing edge cache entry", async () => {
     const fixture = createFixture("file");
-    const url = `https://images.example.com/${fixture.route.publicId}?v=1754481600000`;
+    const url = `https://images.example.com/pub/${fixture.route.publicId}?v=1754481600000`;
     const first = await servePublicResource({ request: new Request(url), ...fixture });
     await Promise.all(fixture.pending);
     assert.equal(first.status, 200);
@@ -120,4 +120,20 @@ test("a blocked resource cannot be served from an existing edge cache entry", as
     assert.equal(blocked.status, 404);
     assert.equal(blocked.headers.get("X-ImgHub-Cache"), null);
     assert.deepEqual(fixture.calls, { metadata: 2, object: 1, put: 1 });
+});
+
+test("a missing public resource returns the branded 404 document", async () => {
+    const fixture = createFixture("file");
+    fixture.deny();
+    const response = await servePublicResource({
+        request: new Request(`https://images.example.com/pub/${fixture.route.publicId}?v=1754481600000`, {
+            headers: { "Accept-Language": "en-US,en;q=0.9" },
+        }),
+        ...fixture,
+    });
+
+    assert.equal(response.status, 404);
+    assert.match(response.headers.get("Content-Type"), /^text\/html/);
+    assert.match(await response.text(), /Resource not found/);
+    assert.deepEqual(fixture.calls, { metadata: 1, object: 0, put: 0 });
 });

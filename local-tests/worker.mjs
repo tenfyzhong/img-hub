@@ -109,7 +109,7 @@ test("the complete Worker uses only local D1, R2, assets, and cache simulations"
     assert.equal(uploadResponse.status, 201);
     const uploaded = await uploadResponse.json();
     const publicPath = new URL(uploaded.resource.url).pathname + new URL(uploaded.resource.url).search;
-    assert.match(new URL(uploaded.resource.url).pathname, /^\/pub_[a-f0-9]{32}$/);
+    assert.match(new URL(uploaded.resource.url).pathname, /^\/pub\/[a-f0-9]{32}$/);
     assert.match(uploaded.resource.name, /^sample-\d{8}T\d{9}\.png$/);
     assert.doesNotMatch(uploaded.resource.url, /admin|integration|sample\.png/i);
 
@@ -132,6 +132,15 @@ test("the complete Worker uses only local D1, R2, assets, and cache simulations"
     assert.equal(firstRead.headers.get("X-ImgHub-Cache"), "MISS");
     const secondRead = await worker.fetch(publicPath);
     assert.equal(secondRead.headers.get("X-ImgHub-Cache"), "HIT");
+    const missingRead = await worker.fetch("/pub/00000000000000000000000000000000?v=1", {
+        headers: { "Accept-Language": "zh-CN" },
+    });
+    assert.equal(missingRead.status, 404);
+    assert.match(missingRead.headers.get("Content-Type"), /^text\/html/);
+    assert.match(await missingRead.text(), /这个资源不存在/);
+    const retiredRead = await worker.fetch(publicPath.replace("/pub/", "/file/"));
+    assert.equal(retiredRead.status, 404);
+    assert.match(retiredRead.headers.get("Content-Type"), /^text\/html/);
     const adminHistory = await worker.fetch("/api/history", { headers: { Cookie: cookie } })
         .then((response) => response.json());
     assert.equal(adminHistory.events[0].action, "upload");
@@ -209,6 +218,7 @@ test("the complete Worker uses only local D1, R2, assets, and cache simulations"
     assert.equal(userTextResponse.status, 201);
     const userText = await userTextResponse.json();
     assert.match(userText.resource.name, /^text-\d{8}T\d{9}\.md$/);
+    assert.match(new URL(userText.resource.url).pathname, /^\/pub\/[a-f0-9]{32}$/);
     const userTextPath = new URL(userText.resource.url).pathname + new URL(userText.resource.url).search;
     const renderedText = await worker.fetch(userTextPath);
     assert.equal(renderedText.status, 200);

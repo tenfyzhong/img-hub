@@ -15,8 +15,8 @@ ImgHub 是一个只使用 Cloudflare Workers、D1 和 R2 的多用户文件与�
 - 所有设置密码表单都要求确认密码并支持显示/隐藏；管理员可以一键生成并复制强随机临时密码。
 - D1 中每条文件和文本记录都包含创建者；用户只能列出、替换和删除自己的内容。
 - R2 按用户 ID 隔离根目录：`users/{user-id}/file/` 与 `users/{user-id}/text/`。
-- 新公开路径使用 `/file/pub_7b62…`、`/text/pub_91ac…` 形式的随机 ID，不暴露用户名、目录或文件名；旧用户名路径保留兼容读取。
-- 替换内容不改变随机公开路径和 R2 object key，只递增缓存版本，例如 `/file/pub_7b62…?v=2`。
+- 文件与文本统一使用 `/pub/7b62…` 形式的随机公开路径，不暴露资源类型、用户名、目录或文件名。不支持以前的根路径、`/file/`、`/text/`、带 `pub_` 前缀的 ID 和带用户名的公开路径。
+- 替换内容不改变随机公开路径和 R2 object key，只递增缓存版本，例如 `/pub/7b62…?v=2`。
 - **上传** 菜单用占满一行的三个等高页签提供上传文件、发布文本和文件外链；独立的 **文件管理** 菜单在同一个目录树和资源库中混合管理文件与文本，不再按类型切换。
 - 选择文件、拖入文件，或粘贴文件和剪贴板图片后会立即上传并显示进度；上传结果和历史文件均可一键复制裸 URL、Markdown 或 HTML。
 - 新文件和文本名称会加入毫秒级 UTC 时间戳，因此相同原始名称可以重复发布。文本文件名选填，留空时按格式自动生成；文本发布结果与文件上传一样提供 URL、Markdown 和 HTML 复制按钮。
@@ -26,7 +26,7 @@ ImgHub 是一个只使用 Cloudflare Workers、D1 和 R2 的多用户文件与�
 - 管理员可在网页中设置 R2 保留天数。部署后的 Worker 默认保留 91 天，并通过每日定时维护任务删除到期对象，不保存 Cloudflare 管理凭据。
 - 用户可以创建带名称、有效期且可撤销的 API Key；系统只保存 Key 的哈希，明文仅显示一次。
 - 内置 Agent Skill 可通过 API Key 管理资源；浏览器插件支持配置任意部署域名，并支持 Chrome、Edge、Firefox。
-- 带正确版本号的 `/file`、`/text` 读取使用 `caches.default`；通过轻量 D1 审计检查后，缓存命中会跳过 R2 object 读取。
+- 带正确版本号的 `/pub/{随机 ID}` 读取使用 `caches.default`；通过轻量 D1 审计检查后，缓存命中会跳过 R2 object 读取。
 - 管理员可以配置站点标题、标语、欢迎标题与欢迎说明。
 - 不包含其他存储通道，仅使用 Cloudflare R2。
 
@@ -89,6 +89,14 @@ D1/R2 可用区域由 Wrangler 决定；不设置区域变量时由 Cloudflare �
 `main` 是稳定分发分支，开发代码通过 `develop` 集成。同一份部署 workflow 同时适用于本仓库和所有 fork。GitHub 只读取当前运行仓库自己的 Secrets，因此 fork 只会部署到 fork 所有者自己的 Cloudflare 账号。默认资源前缀是 `img-hub-{repository-id}`，避免本仓库与不同 fork 的 Worker、D1、R2、Turnstile 重名。可添加 Actions Repository Variable `IMG_HUB_RESOURCE_PREFIX` 自定义前缀；CLI 还支持 `IMG_HUB_WORKER_NAME`、`IMG_HUB_DATABASE_NAME`、`IMG_HUB_BUCKET_NAME` 和 `IMG_HUB_TURNSTILE_DOMAINS`。
 
 不读取 Secret 的 CI 会验证目标为 `develop` 和 `main` 的 PR；稳定部署 workflow 会验证每次 `main` 更新，再运行 `npm run deploy:cloudflare`，自动创建 D1/R2/Turnstile、应用初始 D1 schema，并带每日保留任务和 Turnstile Secret 部署 Worker。Fork 用户必须先启用一次 Actions，同步后的 `main` 才会自动构建。没有配置两个 Cloudflare Secrets 时验证仍会执行，部署步骤会明确跳过。完整分支与发布规则见 [CONTRIBUTING.zh-CN.md](CONTRIBUTING.zh-CN.md)。模板创建的仓库历史独立，没有 GitHub 的 **Sync fork** 路径。
+
+### 销毁 Cloudflare 部署
+
+> **危险——这是毁灭性且不可恢复的操作。** 仅用于可随时丢弃的测试部署。它会永久删除对应 Worker、R2 bucket 中的全部 object 及 bucket 本身、D1 数据库和托管的 Turnstile Widget；操作不会创建备份，数据删除后无法找回。
+
+在 `main` 上打开 **Actions → DESTRUCTIVE: Destroy Cloudflare deployment → Run workflow**。依次输入仓库准确的 `owner/repository`、`DESTROY owner/repository`，并勾选永久数据丢失确认。分支不是 `main`、任一文本不完全匹配、没有勾选警告或缺少 Cloudflare Secrets 时，workflow 都会拒绝执行。它与 `deploy.yml` 使用相同的仓库专属 `IMG_HUB_RESOURCE_PREFIX`，因此原仓库和每个 fork 只会定位各自命名的部署。
+
+Workflow 先删除 Worker 以停止新写入，再清空并删除 R2，然后删除 D1，最后删除 Turnstile。Bucket Lock 会阻止 object 删除；只有再次确认目标后才能移除 Lock 并重新运行。它不会删除这个命名部署之外的 DNS 记录、手工创建的 Worker Route 或其他 Cloudflare 资源，也不会影响本地 `.wrangler/state/`；清理可丢弃的本地数据请使用 `npm run local:reset`。
 
 ### 开启指引网站
 
@@ -210,14 +218,14 @@ users/{alice-user-id}/file/trips/2026/lake-20260806T040506123.png
 公开地址为：
 
 ```text
-/file/pub_7b62f18c6d304476a5edc8a4de176cb1?v=1
+/pub/7b62f18c6d304476a5edc8a4de176cb1?v=1
 ```
 
 文本采用相同结构：
 
 ```text
 users/{alice-user-id}/text/notes/hello-20260806T040506123.md
-/text/pub_91ac1f75e0c84353bb9eca92c4f828a0?v=1
+/pub/91ac1f75e0c84353bb9eca92c4f828a0?v=1
 ```
 
 子目录是 R2 的虚拟前缀，`.` 和 `..` 会被拒绝。新名称会在扩展名前加入毫秒级 UTC 时间戳；文本名留空时自动生成带时间戳的 `.md` 或 `.html` 名称。D1 为每条资源映射随机公开 ID，因此 URL 不会泄露内部路径。替换时仍写入原 R2 key，D1 中的 version 加一，公开路径保持不变，只返回新的 `?v=` 参数。删除时移除 R2 object 和资源元数据，但保留操作时间轴事件。
@@ -226,7 +234,7 @@ users/{alice-user-id}/text/notes/hello-20260806T040506123.md
 
 ### 公开读取缓存
 
-`/file/pub_7b62…?v=3`、`/text/pub_91ac…?v=2` 这类版本正确的 GET 请求会通过 `caches.default` 写入 Cloudflare Cache API。每次请求会先执行一次轻量 D1 可访问性检查，确保已封禁内容和已禁用账户不能利用旧缓存继续展示；检查通过后的缓存命中会跳过 R2 object 读取。首次读取响应包含 `X-ImgHub-Cache: MISS`，缓存命中时为 `HIT`。
+`/pub/7b62…?v=3` 这类版本正确的 GET 请求会通过 `caches.default` 写入 Cloudflare Cache API。每次请求会先执行一次轻量 D1 可访问性检查，确保已封禁内容和已禁用账户不能利用旧缓存继续展示；检查通过后的缓存命中会跳过 R2 object 读取。首次读取响应包含 `X-ImgHub-Cache: MISS`，缓存命中时为 `HIT`。无效、不存在、已删除、已封禁或已过期的公开资源都会显示本地化的 ImgHub 404 页面，不泄露具体原因。
 
 只有唯一、正整数且与 D1 当前 version 相同的 `v` 才会写入缓存。无版本、版本错误、额外查询参数及 HEAD 请求返回 `X-ImgHub-Cache: BYPASS`，避免攻击者制造无限缓存 key。版本 URL 在共享缓存中保留一年，但浏览器 `max-age=0` 会让每次访问都经过审计检查；替换内容后返回新的版本 URL，通过新缓存 key 获取更新内容，公开路径仍不变。
 

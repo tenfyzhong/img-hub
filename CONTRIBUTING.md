@@ -198,6 +198,10 @@ npm audit --audit-level=moderate
 
 The secret-free `ci.yml` runs these checks for pull requests to `develop` or `main` and for pushes to `develop`. `deploy.yml` independently verifies every stable `main` update before using the current repository's Cloudflare credentials. Changes to deployment scripts or workflows should pass `npm run check:deploy`. Extension changes should pass `npm run build:extension` and the browser checks below. Documentation changes should keep the English and Chinese guides aligned.
 
+### Destroy Cloudflare deployment workflow
+
+The manual destruction workflow is destructive and irreversible: it deletes the named Worker, every R2 object and its bucket, the D1 database, and the managed Turnstile widget without creating a backup. Never run it as ordinary manual verification. Validate changes with `test/destroy.test.js`; a live run requires the repository owner's explicit authorization and an isolated, disposable Cloudflare deployment. Bucket locks must make the run fail safely until an authorized operator removes them.
+
 ## Manual web application testing
 
 Start the full application locally:
@@ -243,10 +247,10 @@ Disable account for the test user and confirm its browser sessions and API keys 
 Use this manual checklist for changes that affect user behavior:
 
 1. On a fresh state, set the password for administrator `admin` and confirm setup is no longer offered after signing in.
-2. As the administrator, create a regular user with a temporary password.
+2. As the administrator, open the user-creation drawer and generate a temporary password. Confirm both password fields match, the value is copied immediately, and a success Toast disappears after about two seconds. Click **Copy password** again and confirm the button animates, the clipboard value matches, and the two-second Toast appears again; then create the regular user.
 3. Sign in as that user and confirm content operations are blocked until the password is changed.
 4. Change the password, sign in again, and create nested directories while uploading a file and publishing text.
-5. Confirm new public URLs match `/file/pub_{random}?v=N` or `/text/pub_{random}?v=N`, include no username, directory, or file name, and retain the same random path after replacement.
+5. Confirm file and text public URLs both match `/pub/{32-character-random-id}?v=N`, include no `pub_` prefix, resource kind, username, directory, or file name, and retain the same random path after replacement. Open a missing `/pub/` URL and confirm the localized 404 page appears.
 6. Open a public URL twice. In browser developer tools, confirm the first versioned GET reports `X-ImgHub-Cache: MISS` and a repeated GET can report `HIT`. Unversioned or incorrect versions should report `BYPASS`.
 7. Replace file and text content. Confirm the path stays unchanged, `?v=` increments, and the new URL returns the new content.
 8. Delete each resource and confirm it disappears from the owner's list and its public URL no longer resolves.
@@ -266,7 +270,7 @@ To inspect cache headers without a browser, use a current public URL returned by
 
 ```sh
 curl --silent --show-error --dump-header - --output /dev/null \
-  'http://localhost:8787/file/pub_REPLACE_WITH_CURRENT_ID?v=1'
+  'http://localhost:8787/pub/REPLACE_WITH_CURRENT_32_CHARACTER_ID?v=1'
 ```
 
 ### R2 backend retention

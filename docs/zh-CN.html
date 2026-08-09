@@ -120,6 +120,9 @@ IMG_HUB_TURNSTILE_DOMAINS=images.example.com \
         <p><code>main</code> 始终稳定且可部署，开发代码通过 <code>develop</code> 集成。无 Secret 的 CI 验证 PR，每次 <code>main</code> 更新都运行稳定构建。分支保护和发布流程见<a href="https://github.com/tenfyzhong/img-hub/blob/main/CONTRIBUTING.zh-CN.md">贡献指南</a>。</p>
         <p>同一份部署 workflow 适用于原仓库与每个 fork。每个仓库使用自己的 Secrets，所以只会部署到仓库所有者自己的 Cloudflare 账号。默认前缀 <code>img-hub-{repository-id}</code> 可避免不同仓库的 Worker、D1、R2 重名；可用 Repository Variable <code>IMG_HUB_RESOURCE_PREFIX</code> 覆盖。</p>
         <p>稳定工作流先测试和构建，然后初始化 D1/R2/Turnstile、应用初始 D1 schema，并带每日保留任务和 Turnstile Secret 部署。未配置 Cloudflare Secrets 时会明确跳过部署，而不是让 Fork 的验证失败。Fork 用户先启用一次 Actions，保持 <code>main</code> 没有自定义提交，再使用 <strong>Sync fork → Update branch</strong>；模板创建的仓库没有该同步关系。</p>
+        <h3>销毁 Cloudflare 部署</h3>
+        <div class="callout"><p><strong>危险——这是毁灭性且不可恢复的操作。</strong> 仅对可随时丢弃的测试部署手工运行。它会永久删除对应 Worker、全部 R2 object 和 bucket、D1，以及托管的 Turnstile Widget，且不会创建备份。</p></div>
+        <p>在 <code>main</code> 上打开 <strong>Actions → DESTRUCTIVE: Destroy Cloudflare deployment</strong>，依次输入准确的 <code>owner/repository</code>、<code>DESTROY owner/repository</code>，并确认永久数据丢失。任一项不匹配都会拒绝执行；workflow 使用与部署相同的仓库专属前缀。清空 R2 前必须先移除 Bucket Lock。它不会删除 DNS、手工创建的 Route 或这个命名部署之外的资源。</p>
         <h3>发布本指引</h3>
         <p>在仓库 <strong>Settings → Pages</strong> 中把 Source 设为 <strong>GitHub Actions</strong>。Pages workflow 会发布 <code>docs/</code> 下的中英文页面。</p>
       </section>
@@ -206,17 +209,17 @@ npm run admin:reset -- --remote --database YOUR_D1_DATABASE_NAME</code></pre>
       <section id="paths">
         <h2>隔离、路径与替换</h2>
         <pre><code>users/{user-id}/file/trips/lake-20260806T040506123.png
-/file/pub_7b62f18c6d304476a5edc8a4de176cb1?v=1
+/pub/7b62f18c6d304476a5edc8a4de176cb1?v=1
 
 users/{user-id}/text/notes/hello-20260806T040506123.md
-/text/pub_91ac1f75e0c84353bb9eca92c4f828a0?v=1</code></pre>
-        <p>每个用户 ID 都有独立的内部 file/text 根目录；新公开链接只包含 D1 映射的随机 ID，不暴露用户名、目录或文件名。旧链接继续兼容读取。替换保留 object key 和随机公开路径，只递增 D1 version 并返回新的 <code>?v=</code>。</p>
+/pub/91ac1f75e0c84353bb9eca92c4f828a0?v=1</code></pre>
+        <p>每个用户 ID 都有独立的内部 file/text 根目录；文件和文本统一使用 <code>/pub/{32 位随机 ID}</code> 公开路由，ID 不带 <code>pub_</code> 前缀，也不暴露资源类型、用户名、目录或文件名。不支持以前的根路径、<code>/file/</code>、<code>/text/</code>、带前缀的 ID 和带用户名的公开路径。替换保留 object key 和随机公开路径，只递增 D1 version 并返回新的 <code>?v=</code>。</p>
         <p><strong>上传发布</strong> 菜单提供等高的上传文件、发布文本与文件外链三个页签，文件外链位于最后。新文件和文本名称会加入毫秒级 UTC 时间戳；文本名留空时按格式自动生成，发布结果与文件一样可以复制 URL/Markdown/HTML。直接上传前浏览器会分块计算 MD5；命中同一用户自己的同大小文件后，会复制成独立 R2 对象而不再发送文件。外链导入支持图片、文档、压缩包、音视频、文本及其他 HTTP(S) 文件，并继续执行私网地址和大小检查。放大的投放区可以点击打开文件选择器，也可接收拖入文件、粘贴的文件和剪贴板图片；粘贴后立即上传并显示进度。外链导入会实时显示已抓取字节和百分比；来源未提供长度时使用不确定进度条，并在抓取结束后提示保存到存储的阶段。独立的 <strong>文件管理</strong> 菜单把文件和文本混排在同一个资源列表和根目录树中，不再按类型切换，并支持目录筛选、网格/列表视图、复制 URL/Markdown/HTML、替换与删除。发布文本界面支持 Markdown 与受限富文本，两种编辑框尺寸一致；管理卡片会直接预览文本，并把超大或过长图片限制在卡片内部。时间轴会持久记录上传、导入、替换和删除。</p>
       </section>
 
       <section id="cache">
         <h2>文件与文本读取缓存</h2>
-        <p><code>/file/pub_7b62…?v=3</code>、<code>/text/pub_91ac…?v=2</code> 这类当前版本的 GET 请求使用 <code>caches.default</code>。系统会先执行轻量 D1 可访问性检查，让封禁状态和账户禁用覆盖旧缓存；检查通过后的缓存命中会跳过大型 R2 object 读取。</p>
+        <p><code>/pub/7b62…?v=3</code> 这类当前版本的 GET 请求使用 <code>caches.default</code>。系统会先执行轻量 D1 可访问性检查，让封禁状态和账户禁用覆盖旧缓存；检查通过后的缓存命中会跳过大型 R2 object 读取。无效、不存在、已删除、已封禁或已过期的资源都会显示本地化的 ImgHub 404 页面，不泄露具体原因。</p>
         <p>写入时响应头为 <code>X-ImgHub-Cache: MISS</code>，命中时为 <code>HIT</code>；无版本、版本错误、额外查询参数或 HEAD 请求为 <code>BYPASS</code>。当前正整数版本使用一年共享缓存，浏览器 <code>max-age=0</code> 会保留每次审计检查。Cache API 条目只存在于各 Cloudflare 数据中心本地。</p>
       </section>
 
