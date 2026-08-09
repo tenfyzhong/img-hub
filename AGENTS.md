@@ -148,6 +148,7 @@ public/                         dependency-free browser UI
 public/i18n.js                  English/Chinese catalogs and locale selection
 public/md5.js                   incremental browser upload hashing
 migrations/                     deploy-time D1 migrations
+scripts/wechat-verification.mjs deployment-only root verification asset
 extension/                      generic cross-browser extension source/build
 skills/img-hub/                 distributable agent skill and Python client
 scripts/                        provisioning, deployment, reset, and publishing
@@ -241,6 +242,7 @@ Keep route handling thin. Put reusable authorization, validation, persistence, o
 - Default `wrangler.jsonc` bindings must stay local-capable and must not set D1 or R2 `remote: true`.
 - `scripts/deploy.mjs` must provision or reuse D1 and R2 idempotently, apply the initial schema, include the scheduled retention trigger, and deploy only after explicit invocation.
 - The shared deployment path must create or reuse its managed Turnstile widget through Wrangler, add the deployed/custom hostnames, and inject the secret with `--secrets-file` without logging or persisting it.
+- Optional WeChat verification requires both `IMG_HUB_WECHAT_VERIFY_FILENAME` and `IMG_HUB_WECHAT_VERIFY_CONTENT`. Accept only a safe root-level `.txt` filename, preserve the exact content, deploy it from an isolated temporary Assets copy, and never persist it in `public/`, source control, or logs.
 - Resource names must remain repository-specific by default so the upstream repository and forks do not collide.
 - `ci.yml` is secret-free and validates pull requests to `develop`/`main` plus pushes to `develop`.
 - `deploy.yml` validates every stable `main` update, including fork synchronization, and deploys only when that repository has both Cloudflare credentials.

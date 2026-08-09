@@ -114,6 +114,8 @@ git push origin develop
 
 For a fork that should track upstream, enable GitHub Actions once, keep `main` free of custom commits, configure that fork's own Cloudflare Secrets and Variables, then use **Sync fork → Update branch**. The stable `main` update runs verification and deploys only with the fork's credentials. Feature work belongs on another branch and should target upstream `develop`.
 
+Optional WeChat site verification uses the fork-local Repository Variables `IMG_HUB_WECHAT_VERIFY_FILENAME` and `IMG_HUB_WECHAT_VERIFY_CONTENT`. Both must be configured together. The deploy and release workflows inject the public root `.txt` file into a temporary Assets copy; they must never write the supplied value into `public/`, source control, fixtures, or logs. Deployment changes to this path belong in `test/deployment.test.js`; use placeholder content only and verify unsafe filenames fail before any Cloudflare command runs.
+
 A repository made with **Use this template** is an independent snapshot with unrelated Git history, not a GitHub fork. It does not receive the **Sync fork** update path. Choose a real fork when automatic upstream alignment matters; choose the template when intentionally maintaining an independent product.
 
 ## Repository layout

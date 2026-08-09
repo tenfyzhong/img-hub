@@ -40,6 +40,9 @@ test("English and Chinese guides cover every supported deployment path", async (
         assert.match(guide, /Turnstile/);
         assert.match(guide, /Turnstile Sites Write/);
         assert.match(guide, /IMG_HUB_TURNSTILE_DOMAINS/);
+        assert.match(guide, /IMG_HUB_WECHAT_VERIFY_FILENAME/);
+        assert.match(guide, /IMG_HUB_WECHAT_VERIFY_CONTENT/);
+        assert.match(guide, /root|根路径/i);
         assert.match(guide, /three failed|3 次失败|三次失败/i);
         assert.match(guide, /Create Custom Token|创建自定义令牌/);
         assert.match(guide, /#cloudflare-token/);
@@ -84,6 +87,8 @@ test("GitHub Pages publishes bilingual deployment documentation", async () => {
         assert.match(guide, /disable account|禁用账户/i);
         assert.match(guide, /Turnstile/);
         assert.match(guide, /Turnstile Sites Write/);
+        assert.match(guide, /IMG_HUB_WECHAT_VERIFY_FILENAME/);
+        assert.match(guide, /IMG_HUB_WECHAT_VERIFY_CONTENT/);
         assert.match(guide, /three failed|3 次失败|三次失败/i);
     }
 });

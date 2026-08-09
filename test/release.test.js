@@ -95,6 +95,8 @@ test("release workflow deploys, releases generic packages, and conditionally pub
     assert.match(workflow, /group: cloudflare-production/);
     assert.match(workflow, /npm run deploy:cloudflare/);
     assert.match(workflow, /IMG_HUB_TURNSTILE_DOMAINS/);
+    assert.match(workflow, /IMG_HUB_WECHAT_VERIFY_FILENAME/);
+    assert.match(workflow, /IMG_HUB_WECHAT_VERIFY_CONTENT/);
     assert.match(workflow, /npm run test:local/);
     assert.match(workflow, /npm run build:extension/);
     assert.match(workflow, /gh release create/);
