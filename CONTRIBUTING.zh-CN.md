@@ -114,6 +114,8 @@ git push origin develop
 
 需要持续跟随上游的 Fork 应先启用一次 GitHub Actions，保持 `main` 没有自定义提交，配置该 Fork 自己的 Cloudflare Secrets 和 Variables，然后使用 **Sync fork → Update branch**。稳定的 `main` 更新会自动验证，并且只使用 Fork 自己的凭据部署。功能开发放在其他分支，并以 Upstream 的 `develop` 为 PR 目标。
 
+可选的微信站点验证使用 Fork 自己的 Repository Variables `IMG_HUB_WECHAT_VERIFY_FILENAME` 和 `IMG_HUB_WECHAT_VERIFY_CONTENT`，两个变量必须一起配置。部署和发布 workflow 只把公开的根路径 `.txt` 文件注入静态资源临时副本；不得把用户提供的内容写入 `public/`、源码、测试 fixture 或日志。修改此部署路径时，应在 `test/deployment.test.js` 中使用占位内容，并验证不安全的文件名会在任何 Cloudflare 命令执行前失败。
+
 通过 **Use this template** 创建的是 Git 历史不相关的独立快照，不是 GitHub Fork，因此没有 **Sync fork** 更新路径。需要自动对齐上游时请选择真正的 Fork；准备独立维护产品时再使用模板。
 
 ## 项目结构

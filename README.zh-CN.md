@@ -68,10 +68,12 @@ IMG_HUB_BUCKET_NAME=my-hub-files \
 IMG_HUB_D1_LOCATION=apac \
 IMG_HUB_R2_LOCATION=apac \
 IMG_HUB_TURNSTILE_DOMAINS=images.example.com \
+IMG_HUB_WECHAT_VERIFY_FILENAME=30192898bf0120ae25f69bdce9e25e77.txt \
+IMG_HUB_WECHAT_VERIFY_CONTENT=verification-content-from-wechat \
 ./deploy.sh
 ```
 
-D1/R2 可用区域由 Wrangler 决定；不设置区域变量时由 Cloudflare 自动选择。脚本会自动识别生成的 `workers.dev` 域名；只有需要授权额外自定义域名时，才设置逗号分隔的 `IMG_HUB_TURNSTILE_DOMAINS`。一个 Widget 最多支持 10 个域名条目，并自动覆盖所配域名的子域名。
+D1/R2 可用区域由 Wrangler 决定；不设置区域变量时由 Cloudflare 自动选择。脚本会自动识别生成的 `workers.dev` 域名；只有需要授权额外自定义域名时，才设置逗号分隔的 `IMG_HUB_TURNSTILE_DOMAINS`。一个 Widget 最多支持 10 个域名条目，并自动覆盖所配域名的子域名。两个可选的微信验证变量必须一起提供；部署会把内容原样发布到根路径 `/{文件名}`，不会修改仓库中的 `public/` 目录。
 
 ## 部署方式三：GitHub Actions
 
@@ -82,11 +84,16 @@ D1/R2 可用区域由 Wrangler 决定；不设置区域变量时由 Cloudflare �
 3. 打开 GitHub 仓库的 **Settings → Secrets and variables → Actions**，添加：
    - `CLOUDFLARE_API_TOKEN`
    - `CLOUDFLARE_ACCOUNT_ID`
-4. 打开 **Actions → Deploy to Cloudflare → Run workflow**，或向 `main` 分支推送提交。
+4. 如果微信提供了站点验证文本文件，切换到 **Variables** 页签，并同时添加两个 Repository Variables：
+   - `IMG_HUB_WECHAT_VERIFY_FILENAME`：微信给出的文件名，例如 `30192898bf0120ae25f69bdce9e25e77.txt`
+   - `IMG_HUB_WECHAT_VERIFY_CONTENT`：微信给出的完整文件内容
+5. 打开 **Actions → Deploy to Cloudflare → Run workflow**，或向 `main` 分支推送提交。
+
+微信站点验证是可选配置。必须两个变量都配置或都不配置；只配置一项或文件名不安全时，脚本会在改动 Cloudflare 资源之前失败。文件名只能是根路径下的 `.txt` 文件，由字母、数字、`_`、`-` 组成，不能包含目录或空格。部署时会复制静态站点到隔离的临时目录，不额外添加换行地写入内容，发布到类似 `https://images.example.com/30192898bf0120ae25f69bdce9e25e77.txt` 的地址，最后删除临时副本。验证内容部署后本来就会公开，因此应放在 Repository Variable 中，而不要提交进源码。使用 Tag 部署时，`release.yml` 会读取同样的变量。
 
 自定义 Token 应包含且只包含：**Account Settings Read**、**Workers Scripts Edit**、**D1 Edit**、**Workers R2 Storage Edit**、**Turnstile Edit**、**User Details Read** 和 **Memberships Read**。在 **Account Resources** 中把范围限制为 **Include → 指定账号（Specific account）**。默认 `workers.dev` 部署不需要 KV、Tail、DNS 或 Zone 权限；只有以后给特定 Zone 配置 Route 时才增加 **Workers Routes Edit**。
 
-`main` 是稳定分发分支，开发代码通过 `develop` 集成。同一份部署 workflow 同时适用于本仓库和所有 fork。GitHub 只读取当前运行仓库自己的 Secrets，因此 fork 只会部署到 fork 所有者自己的 Cloudflare 账号。默认资源前缀是 `img-hub-{repository-id}`，避免本仓库与不同 fork 的 Worker、D1、R2、Turnstile 重名。可添加 Actions Repository Variable `IMG_HUB_RESOURCE_PREFIX` 自定义前缀；CLI 还支持 `IMG_HUB_WORKER_NAME`、`IMG_HUB_DATABASE_NAME`、`IMG_HUB_BUCKET_NAME` 和 `IMG_HUB_TURNSTILE_DOMAINS`。
+`main` 是稳定分发分支，开发代码通过 `develop` 集成。同一份部署 workflow 同时适用于本仓库和所有 fork。GitHub 只读取当前运行仓库自己的 Secrets 和 Variables，因此 fork 只会部署到 fork 所有者自己的 Cloudflare 账号，也只会发布该 fork 配置的验证文件。默认资源前缀是 `img-hub-{repository-id}`，避免本仓库与不同 fork 的 Worker、D1、R2、Turnstile 重名。可添加 Actions Repository Variable `IMG_HUB_RESOURCE_PREFIX` 自定义前缀；CLI 还支持 `IMG_HUB_WORKER_NAME`、`IMG_HUB_DATABASE_NAME`、`IMG_HUB_BUCKET_NAME`、`IMG_HUB_TURNSTILE_DOMAINS`、`IMG_HUB_WECHAT_VERIFY_FILENAME` 和 `IMG_HUB_WECHAT_VERIFY_CONTENT`。
 
 不读取 Secret 的 CI 会验证目标为 `develop` 和 `main` 的 PR；稳定部署 workflow 会验证每次 `main` 更新，再运行 `npm run deploy:cloudflare`，自动创建 D1/R2/Turnstile、应用初始 D1 schema，并带每日保留任务和 Turnstile Secret 部署 Worker。Fork 用户必须先启用一次 Actions，同步后的 `main` 才会自动构建。没有配置两个 Cloudflare Secrets 时验证仍会执行，部署步骤会明确跳过。完整分支与发布规则见 [CONTRIBUTING.zh-CN.md](CONTRIBUTING.zh-CN.md)。模板创建的仓库历史独立，没有 GitHub 的 **Sync fork** 路径。
 

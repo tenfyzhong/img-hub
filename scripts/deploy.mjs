@@ -14,6 +14,7 @@ import {
     findWorkerHostname,
     normalizeTurnstileDomains,
 } from "./turnstile-wrangler.mjs";
+import { prepareDeploymentAssets } from "./wechat-verification.mjs";
 
 const { databaseName, bucketName, workerName } = resolveResourceNames(process.env);
 const generatedConfig = "wrangler.generated.json";
@@ -40,87 +41,94 @@ function readDatabases() {
     return JSON.parse(output);
 }
 
-console.log("[1/8] Checking Cloudflare authentication");
-wrangler(["whoami"]);
-
-console.log(`[2/8] Provisioning D1 database: ${databaseName}`);
-let databaseId = findDatabaseId(readDatabases(), databaseName);
-if (!databaseId) {
-    const locationArguments = process.env.IMG_HUB_D1_LOCATION
-        ? ["--location", process.env.IMG_HUB_D1_LOCATION]
-        : [];
-    wrangler(["d1", "create", databaseName, ...locationArguments]);
-    databaseId = findDatabaseId(readDatabases(), databaseName);
-}
-if (!databaseId) {
-    throw new Error(`Could not resolve the ID of D1 database ${databaseName}`);
-}
-
-console.log(`[3/8] Provisioning R2 bucket: ${bucketName}`);
-const bucket = wrangler(["r2", "bucket", "info", bucketName, "--json"], {
-    capture: true,
-    allowFailure: true,
-    silent: true,
-});
-if (!bucket.ok) {
-    const locationArguments = process.env.IMG_HUB_R2_LOCATION
-        ? ["--location", process.env.IMG_HUB_R2_LOCATION]
-        : [];
-    wrangler(["r2", "bucket", "create", bucketName, ...locationArguments]);
-}
-
-console.log("[4/8] Removing the legacy fixed R2 lifecycle rule if present");
-wrangler([
-    "r2", "bucket", "lifecycle", "remove", bucketName,
-    "--id", "img-hub-default-expiration",
-], { allowFailure: true, silent: true });
-
-console.log("[5/8] Generating Cloudflare bindings");
-let config = createDeploymentConfig({
-    databaseId,
-    databaseName,
-    bucketName,
-    workerName,
-});
-writeFileSync(generatedConfig, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
-
-console.log("[6/8] Applying D1 migrations");
-wrangler(["d1", "migrations", "apply", "DB", "--remote", "--config", generatedConfig]);
-
-console.log("[7/8] Provisioning Cloudflare Turnstile login verification");
-let turnstileDomains = normalizeTurnstileDomains(process.env.IMG_HUB_TURNSTILE_DOMAINS);
-if (turnstileDomains.length === 0) {
-    const bootstrap = wrangler(["deploy", "--config", generatedConfig], { capture: true });
-    if (bootstrap.stdout) process.stdout.write(bootstrap.stdout);
-    const workerHostname = findWorkerHostname(`${bootstrap.stdout}\n${bootstrap.stderr}`);
-    if (!workerHostname) {
-        throw new Error("Could not determine the workers.dev hostname; set IMG_HUB_TURNSTILE_DOMAINS");
-    }
-    turnstileDomains = [workerHostname];
-}
-const turnstile = ensureTurnstileWidgetWithWrangler({
-    name: `${workerName}-login`,
-    domains: turnstileDomains,
-    wrangler,
-});
-config = createDeploymentConfig({
-    databaseId,
-    databaseName,
-    bucketName,
-    workerName,
-    turnstileSiteKey: turnstile.siteKey,
-});
-writeFileSync(generatedConfig, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
-
-console.log(`[8/8] Deploying ImgHub Worker with its Turnstile secret: ${workerName}`);
-const secretsDirectory = mkdtempSync(join(tmpdir(), "img-hub-deploy-"));
-const secretsFile = join(secretsDirectory, "secrets.json");
+const deploymentAssets = prepareDeploymentAssets();
 try {
-    writeFileSync(secretsFile, `${JSON.stringify({
-        TURNSTILE_SECRET_KEY: turnstile.secretKey,
-    })}\n`, { mode: 0o600 });
-    wrangler(["deploy", "--config", generatedConfig, "--secrets-file", secretsFile]);
+    console.log("[1/8] Checking Cloudflare authentication");
+    wrangler(["whoami"]);
+
+    console.log(`[2/8] Provisioning D1 database: ${databaseName}`);
+    let databaseId = findDatabaseId(readDatabases(), databaseName);
+    if (!databaseId) {
+        const locationArguments = process.env.IMG_HUB_D1_LOCATION
+            ? ["--location", process.env.IMG_HUB_D1_LOCATION]
+            : [];
+        wrangler(["d1", "create", databaseName, ...locationArguments]);
+        databaseId = findDatabaseId(readDatabases(), databaseName);
+    }
+    if (!databaseId) {
+        throw new Error(`Could not resolve the ID of D1 database ${databaseName}`);
+    }
+
+    console.log(`[3/8] Provisioning R2 bucket: ${bucketName}`);
+    const bucket = wrangler(["r2", "bucket", "info", bucketName, "--json"], {
+        capture: true,
+        allowFailure: true,
+        silent: true,
+    });
+    if (!bucket.ok) {
+        const locationArguments = process.env.IMG_HUB_R2_LOCATION
+            ? ["--location", process.env.IMG_HUB_R2_LOCATION]
+            : [];
+        wrangler(["r2", "bucket", "create", bucketName, ...locationArguments]);
+    }
+
+    console.log("[4/8] Removing the legacy fixed R2 lifecycle rule if present");
+    wrangler([
+        "r2", "bucket", "lifecycle", "remove", bucketName,
+        "--id", "img-hub-default-expiration",
+    ], { allowFailure: true, silent: true });
+
+    console.log("[5/8] Generating Cloudflare bindings and static assets");
+    let config = createDeploymentConfig({
+        databaseId,
+        databaseName,
+        bucketName,
+        workerName,
+        assetsDirectory: deploymentAssets.directory,
+    });
+    writeFileSync(generatedConfig, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
+
+    console.log("[6/8] Applying D1 migrations");
+    wrangler(["d1", "migrations", "apply", "DB", "--remote", "--config", generatedConfig]);
+
+    console.log("[7/8] Provisioning Cloudflare Turnstile login verification");
+    let turnstileDomains = normalizeTurnstileDomains(process.env.IMG_HUB_TURNSTILE_DOMAINS);
+    if (turnstileDomains.length === 0) {
+        const bootstrap = wrangler(["deploy", "--config", generatedConfig], { capture: true });
+        if (bootstrap.stdout) process.stdout.write(bootstrap.stdout);
+        const workerHostname = findWorkerHostname(`${bootstrap.stdout}\n${bootstrap.stderr}`);
+        if (!workerHostname) {
+            throw new Error("Could not determine the workers.dev hostname; set IMG_HUB_TURNSTILE_DOMAINS");
+        }
+        turnstileDomains = [workerHostname];
+    }
+    const turnstile = ensureTurnstileWidgetWithWrangler({
+        name: `${workerName}-login`,
+        domains: turnstileDomains,
+        wrangler,
+    });
+    config = createDeploymentConfig({
+        databaseId,
+        databaseName,
+        bucketName,
+        workerName,
+        turnstileSiteKey: turnstile.siteKey,
+        assetsDirectory: deploymentAssets.directory,
+    });
+    writeFileSync(generatedConfig, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
+
+    console.log(`[8/8] Deploying ImgHub Worker with its Turnstile secret: ${workerName}`);
+    const secretsDirectory = mkdtempSync(join(tmpdir(), "img-hub-deploy-"));
+    const secretsFile = join(secretsDirectory, "secrets.json");
+    try {
+        writeFileSync(secretsFile, `${JSON.stringify({
+            TURNSTILE_SECRET_KEY: turnstile.secretKey,
+        })}\n`, { mode: 0o600 });
+        wrangler(["deploy", "--config", generatedConfig, "--secrets-file", secretsFile]);
+    } finally {
+        rmSync(secretsDirectory, { recursive: true, force: true });
+    }
+    console.log("Deployment complete. Open the Worker URL and create the first administrator.");
 } finally {
-    rmSync(secretsDirectory, { recursive: true, force: true });
+    deploymentAssets.cleanup();
 }
-console.log("Deployment complete. Open the Worker URL and create the first administrator.");

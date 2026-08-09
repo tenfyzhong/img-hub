@@ -13,6 +13,7 @@ export function createDeploymentConfig({
     bucketName,
     workerName = "img-hub",
     turnstileSiteKey,
+    assetsDirectory = "./public",
 }) {
     if (!databaseId || !databaseName || !bucketName || !workerName) {
         throw new Error("databaseId, databaseName, bucketName, and workerName are required");
@@ -31,7 +32,7 @@ export function createDeploymentConfig({
         r2_buckets: [{ binding: "BUCKET", bucket_name: bucketName }],
         ...(turnstileSiteKey ? { vars: { TURNSTILE_SITE_KEY: turnstileSiteKey } } : {}),
         assets: {
-            directory: "./public",
+            directory: assetsDirectory,
             binding: "ASSETS",
             not_found_handling: "single-page-application",
             run_worker_first: ["/api/*", "/pub/*", "/file/*", "/text/*", "/pub_*"],

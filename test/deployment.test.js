@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 
 import {
@@ -7,6 +9,10 @@ import {
     findDatabaseId,
     resolveResourceNames,
 } from "../scripts/deployment-config.mjs";
+import {
+    prepareDeploymentAssets,
+    resolveWechatVerification,
+} from "../scripts/wechat-verification.mjs";
 import {
     ensureTurnstileWidgetWithWrangler,
     findWorkerHostname,
@@ -37,6 +43,86 @@ test("generated deployment config binds the provisioned D1 and R2 resources", ()
     assert.deepEqual(config.triggers.crons, ["0 3 * * *"]);
     assert.equal(config.vars.TURNSTILE_SITE_KEY, "0x-site-key");
     assert.equal(config.vars.TURNSTILE_SECRET_KEY, undefined);
+});
+
+test("generated deployment config can deploy a temporary static asset directory", () => {
+    const config = createDeploymentConfig({
+        databaseId: "db-id",
+        databaseName: "img-hub-db",
+        bucketName: "img-hub-files",
+        assetsDirectory: "/tmp/img-hub-assets",
+    });
+
+    assert.equal(config.assets.directory, "/tmp/img-hub-assets");
+});
+
+test("WeChat verification requires a safe root text filename and exact content", () => {
+    const filename = "30192898bf0120ae25f69bdce9e25e77.txt";
+    assert.equal(resolveWechatVerification({}), null);
+    assert.deepEqual(resolveWechatVerification({
+        IMG_HUB_WECHAT_VERIFY_FILENAME: filename,
+        IMG_HUB_WECHAT_VERIFY_CONTENT: "verification-token\n",
+    }), {
+        filename,
+        content: "verification-token\n",
+    });
+
+    assert.throws(() => resolveWechatVerification({
+        IMG_HUB_WECHAT_VERIFY_FILENAME: filename,
+    }), /must both be configured/);
+    assert.throws(() => resolveWechatVerification({
+        IMG_HUB_WECHAT_VERIFY_CONTENT: "verification-token",
+    }), /must both be configured/);
+    for (const unsafeFilename of [
+        "../verify.txt",
+        "nested/verify.txt",
+        "verify.html",
+        ".txt",
+        "verify name.txt",
+        " verify.txt",
+    ]) {
+        assert.throws(() => resolveWechatVerification({
+            IMG_HUB_WECHAT_VERIFY_FILENAME: unsafeFilename,
+            IMG_HUB_WECHAT_VERIFY_CONTENT: "verification-token",
+        }), /safe root-level \.txt filename/);
+    }
+    assert.throws(() => resolveWechatVerification({
+        IMG_HUB_WECHAT_VERIFY_FILENAME: filename,
+        IMG_HUB_WECHAT_VERIFY_CONTENT: "",
+    }), /must both be configured/);
+});
+
+test("deployment writes WeChat verification into an isolated asset copy", async (context) => {
+    const fixtureRoot = await mkdtemp(join(tmpdir(), "img-hub-wechat-test-"));
+    context.after(() => rm(fixtureRoot, { recursive: true, force: true }));
+    const sourceDirectory = join(fixtureRoot, "public");
+    await mkdir(sourceDirectory);
+    await writeFile(join(sourceDirectory, "index.html"), "<h1>ImgHub</h1>");
+
+    const prepared = prepareDeploymentAssets({
+        sourceDirectory,
+        temporaryRoot: fixtureRoot,
+        environment: {
+            IMG_HUB_WECHAT_VERIFY_FILENAME: "30192898bf0120ae25f69bdce9e25e77.txt",
+            IMG_HUB_WECHAT_VERIFY_CONTENT: "verification-token",
+        },
+    });
+    context.after(() => prepared.cleanup());
+
+    assert.notEqual(prepared.directory, sourceDirectory);
+    assert.equal(await readFile(join(prepared.directory, "index.html"), "utf8"),
+        "<h1>ImgHub</h1>");
+    const verificationPath = join(
+        prepared.directory,
+        "30192898bf0120ae25f69bdce9e25e77.txt",
+    );
+    assert.equal(await readFile(verificationPath, "utf8"), "verification-token");
+    await assert.rejects(readFile(join(
+        sourceDirectory,
+        "30192898bf0120ae25f69bdce9e25e77.txt",
+    ), "utf8"), /ENOENT/);
+    prepared.cleanup();
+    await assert.rejects(readFile(verificationPath, "utf8"), /ENOENT/);
 });
 
 test("deployment resolves workers.dev output and configured Turnstile hostnames", () => {
@@ -153,6 +239,8 @@ test("GitHub deployment initializes storage and deploys the scheduled worker", a
     assert.match(workflow, /CLOUDFLARE_ACCOUNT_ID/);
     assert.match(workflow, /Turnstile/i);
     assert.match(workflow, /IMG_HUB_TURNSTILE_DOMAINS/);
+    assert.match(workflow, /IMG_HUB_WECHAT_VERIFY_FILENAME/);
+    assert.match(workflow, /IMG_HUB_WECHAT_VERIFY_CONTENT/);
     assert.match(workflow, /github\.event\.repository\.id/);
     assert.match(workflow, /steps\.cloudflare\.outputs\.enabled/);
 });
@@ -161,6 +249,7 @@ test("the shared deployment path uses Wrangler auth for Turnstile and injects it
     const deploy = await readFile(new URL("../scripts/deploy.mjs", import.meta.url), "utf8");
 
     assert.match(deploy, /ensureTurnstileWidgetWithWrangler/);
+    assert.match(deploy, /prepareDeploymentAssets/);
     assert.match(deploy, /--secrets-file/);
     assert.doesNotMatch(deploy, /process\.env\.CLOUDFLARE_API_TOKEN/);
     assert.doesNotMatch(deploy, /process\.env\.CLOUDFLARE_ACCOUNT_ID/);
