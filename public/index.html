@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A private, multi-user file and text hub powered by Cloudflare.">
+  <title>ImgHub</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" type="module"></script>
+</head>
+<body>
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
+  <header class="site-header">
+    <a class="brand" href="/" data-i18n-aria-label="brand.home" aria-label="ImgHub home">
+      <svg viewBox="0 0 40 40" aria-hidden="true">
+        <path d="M7 27.5 15.5 19l5.2 5.2 4.5-4.5L33 27.5V33H7Z"></path>
+        <circle cx="25.5" cy="12.5" r="4"></circle>
+      </svg>
+      <span class="site-title-slot">ImgHub</span>
+    </a>
+    <div class="header-actions">
+      <div id="language-switcher" class="language-switcher" role="group" data-i18n-aria-label="language.aria" aria-label="Language">
+        <button type="button" data-language="en" data-i18n="language.en">EN</button>
+        <button type="button" data-language="zh-CN" data-i18n="language.zh">中文</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="auth-shell" class="auth-shell" hidden>
+      <div class="auth-story">
+        <p id="site-tagline" class="eyebrow">Your files. Stable links.</p>
+        <h1 id="site-welcome-title">A small cloud shelf for the things you share.</h1>
+        <p id="site-welcome-description">Private accounts, isolated storage, and links that survive content replacement.</p>
+      </div>
+
+      <div class="auth-card">
+        <section id="setup-panel" hidden>
+          <p class="eyebrow" data-i18n="setup.eyebrow">First launch</p>
+          <h2 data-i18n="setup.title">Create the administrator</h2>
+          <p class="muted" data-i18n="setup.description">There is no default password. The administrator username is fixed as admin; choose its password now. This screen disappears after the account is created.</p>
+          <form id="setup-form" class="stack-form">
+            <label><span data-i18n="common.password">Password</span>
+              <span class="password-field"><input name="password" type="password" autocomplete="new-password" minlength="10" required><button type="button" data-password-toggle data-i18n-aria-label="password.toggle" aria-label="Show or hide password"></button></span>
+            </label>
+            <label><span data-i18n="password.confirm">Confirm password</span>
+              <span class="password-field"><input name="confirmPassword" type="password" autocomplete="new-password" minlength="10" required><button type="button" data-password-toggle data-i18n-aria-label="password.toggle" aria-label="Show or hide password"></button></span>
+            </label>
+            <button class="primary" type="submit" data-i18n="setup.submit">Initialize ImgHub</button>
+          </form>
+        </section>
+
+        <section id="login-panel" hidden>
+          <p class="eyebrow" data-i18n="login.eyebrow">Welcome back</p>
+          <h2 data-i18n="login.title">Sign in</h2>
+          <form id="login-form" class="stack-form">
+            <label><span data-i18n="common.username">Username</span>
+              <input name="username" autocomplete="username" required>
+            </label>
+            <label><span data-i18n="common.password">Password</span>
+              <span class="password-field"><input name="password" type="password" autocomplete="current-password" required><button type="button" data-password-toggle data-i18n-aria-label="password.toggle" aria-label="Show or hide password"></button></span>
+            </label>
+            <div id="login-turnstile" class="login-turnstile" hidden>
+              <p class="muted" data-i18n="login.turnstileHint">Complete the security check to continue signing in.</p>
+              <div id="login-turnstile-widget"></div>
+              <input id="login-turnstile-token" name="turnstileToken" type="hidden">
+            </div>
+            <button class="primary" type="submit" data-i18n="login.submit">Sign in</button>
+          </form>
+        </section>
+      </div>
+    </section>
+
+    <section id="password-gate" class="center-card" hidden>
+      <p class="eyebrow" data-i18n="passwordGate.eyebrow">One more step</p>
+      <h1 data-i18n="passwordGate.title">Choose your own password</h1>
+      <p class="muted" data-i18n="passwordGate.description">Your administrator issued or reset your password. Change it before using ImgHub.</p>
+      <form id="first-password-form" class="stack-form compact-form">
+        <label><span data-i18n="password.temporary">Temporary password</span>
+          <span class="password-field"><input name="currentPassword" type="password" autocomplete="current-password" required><button type="button" data-password-toggle data-i18n-aria-label="password.toggle" aria-label="Show or hide password"></button></span>
+        </label>
+        <label><span data-i18n="password.new">New password</span>
+          <span class="password-field"><input name="newPassword" type="password" autocomplete="new-password" minlength="10" required><button type="button" data-password-toggle data-i18n-aria-label="password.toggle" aria-label="Show or hide password"></button></span>
+        </label>
+        <label><span data-i18n="password.confirm">Confirm password</span>
+          <span class="password-field"><input name="confirmPassword" type="password" autocomplete="new-password" minlength="10" required><button type="button" data-password-toggle data-i18n-aria-label="password.toggle" aria-label="Show or hide password"></button></span>
+        </label>
+        <button class="primary" type="submit" data-i18n="password.save">Save new password</button>
+      </form>
+      <button class="text-button logout-button" type="button" data-i18n="common.signOut">Sign out</button>
+    </section>
+
+    <section id="app-shell" class="app-shell" hidden>
+      <aside class="sidebar">
+        <div>
+          <p class="sidebar-label" data-i18n="nav.library">Library</p>
+          <nav data-i18n-aria-label="nav.mainAria" aria-label="Main navigation">
+            <button class="nav-button active" data-view="upload" type="button"><span>＋</span><span class="nav-label" data-i18n="nav.upload">Upload</span></button>
+            <button class="nav-button" data-view="manager" type="button"><span>◫</span><span class="nav-label" data-i18n="nav.manage">Manage</span></button>
+            <button class="nav-button" data-view="history" type="button"><span>◷</span><span class="nav-label" data-i18n="nav.history">History</span></button>
+          </nav>
+          <p class="sidebar-label" data-i18n="nav.account">Account</p>
+          <nav data-i18n-aria-label="nav.accountAria" aria-label="Account navigation">
+            <button class="nav-button" data-view="security" type="button"><span>⌁</span><span class="nav-label" data-i18n="nav.security">Security</span></button>
+            <button class="nav-button" data-view="api-keys" type="button"><span>⚿</span><span class="nav-label" data-i18n="nav.apiKeys">API keys</span></button>
+          </nav>
+          <p class="sidebar-label" data-admin-only data-i18n="nav.administration" hidden>Administration</p>
+          <nav data-admin-only data-i18n-aria-label="nav.adminAria" aria-label="Administration navigation" hidden>
+            <button class="nav-button" data-view="audit" type="button"><span>◎</span><span class="nav-label" data-i18n="nav.audit">Content audit</span></button>
+            <button class="nav-button" data-view="users" type="button"><span>♙</span><span class="nav-label" data-i18n="nav.users">User management</span></button>
+            <button class="nav-button" data-view="admin" type="button"><span>◇</span><span class="nav-label" data-i18n="nav.adminSettings">Site settings</span></button>
+          </nav>
+        </div>
+        <div class="profile-card">
+          <span id="profile-initial" class="avatar">I</span>
+          <span><strong id="profile-name">User</strong><small id="profile-role">user</small></span>
+          <button class="icon-button logout-button" type="button" data-i18n-title="common.signOut" data-i18n-aria-label="common.signOut" title="Sign out" aria-label="Sign out">↗</button>
+        </div>
+      </aside>
+
+      <div class="workspace">
+        <section id="view-upload" class="view">
+          <div class="view-heading">
+            <div><p class="eyebrow" data-i18n="upload.eyebrow">Publish</p><h1 data-i18n="upload.title">Upload &amp; publish</h1></div>
+          </div>
+          <div id="upload-mode-switch" class="mode-switch" role="tablist" data-i18n-aria-label="upload.modeAria" aria-label="Publish type">
+            <button id="upload-file-tab" class="mode-option active" type="button" role="tab" aria-selected="true" aria-controls="upload-file-panel"><span>◫</span><span data-i18n="upload.fileTab">Upload files</span></button>
+            <button id="upload-text-tab" class="mode-option" type="button" role="tab" aria-selected="false" aria-controls="upload-text-panel"><span>¶</span><span data-i18n="upload.textTab">Publish text</span></button>
+            <button id="upload-remote-tab" class="mode-option" type="button" role="tab" aria-selected="false" aria-controls="upload-remote-panel"><span>↙</span><span data-i18n="upload.remoteTab">Import file</span></button>
+          </div>
+
+          <div class="upload-mode-stage">
+            <div id="upload-file-panel" class="mode-panel" role="tabpanel" aria-labelledby="upload-file-tab">
+              <form id="file-form" class="upload-panel">
+                <label id="file-drop-zone" class="drop-zone" tabindex="0" data-i18n-aria-label="files.pasteAria" aria-label="Choose, drop, or paste files">
+                  <input id="file-picker" name="file" type="file" multiple>
+                  <span class="upload-mark">＋</span>
+                  <strong data-i18n="files.choose">Choose, drop, or paste files</strong>
+                  <small data-i18n="files.autoUpload">Click here, drag files, or paste from the clipboard; upload starts immediately, up to 100 MB each</small>
+                </label>
+                <label class="upload-directory"><span data-i18n="common.optionalDirectory">Optional subdirectory</span>
+                  <input id="file-directory" name="directory" placeholder="trips/2026">
+                </label>
+                <div id="file-upload-progress" class="upload-progress" hidden>
+                  <div><span id="file-upload-label" data-i18n="files.preparing">Preparing upload…</span><strong id="file-upload-percent">0%</strong></div>
+                  <progress id="file-upload-meter" max="100" value="0"></progress>
+                </div>
+              </form>
+            </div>
+
+            <div id="upload-text-panel" class="mode-panel" role="tabpanel" aria-labelledby="upload-text-tab" hidden>
+              <form id="text-form" class="editor-panel">
+                <div class="form-row">
+                  <label><span data-i18n="texts.name">File name</span><input name="name" data-i18n-placeholder="texts.namePlaceholder" placeholder="Optional; generated automatically"></label>
+                  <label><span data-i18n="common.optionalDirectory">Optional subdirectory</span><input name="directory" placeholder="snippets/css"></label>
+                </div>
+                <label><span data-i18n="texts.format">Format</span>
+                  <select id="text-format" name="format">
+                    <option value="markdown" data-i18n="texts.markdown">Markdown</option>
+                    <option value="rich" data-i18n="texts.rich">Rich text</option>
+                  </select>
+                </label>
+                <div id="rich-text-toolbar" class="rich-text-toolbar inactive" aria-hidden="true">
+                  <button type="button" data-rich-command="bold"><strong>B</strong></button>
+                  <button type="button" data-rich-command="italic"><em>I</em></button>
+                  <button type="button" data-rich-command="underline"><u>U</u></button>
+                  <button type="button" data-rich-command="insertUnorderedList">• List</button>
+                  <button type="button" data-rich-command="formatBlock" data-rich-value="h2">H2</button>
+                </div>
+                <label id="plain-text-field"><span data-i18n="texts.content">Content</span><textarea id="text-content" name="content" rows="12" data-i18n-placeholder="texts.contentPlaceholder" placeholder="Write or paste text…" required></textarea></label>
+                <div id="rich-text-field" hidden><span class="field-label" data-i18n="texts.content">Content</span><div id="rich-text-editor" class="rich-text-editor" contenteditable="true" role="textbox" aria-multiline="true"></div></div>
+                <div class="editor-actions"><button id="text-submit" class="primary" type="submit" data-i18n="texts.publish">Publish text</button><button id="cancel-text-edit" class="secondary" type="button" data-i18n="common.cancel" hidden>Cancel</button></div>
+              </form>
+            </div>
+
+            <div id="upload-remote-panel" class="mode-panel" role="tabpanel" aria-labelledby="upload-remote-tab" hidden>
+              <form id="remote-file-form" class="remote-upload surface">
+                <label><span data-i18n="files.remoteUrl">File URL</span><input name="url" type="url" placeholder="https://example.com/archive.zip" required></label>
+                <label><span data-i18n="common.optionalDirectory">Optional subdirectory</span><input name="directory" placeholder="imports"></label>
+                <button class="secondary" type="submit" data-i18n="files.import">Fetch and upload</button>
+                <div id="remote-upload-progress" class="upload-progress remote-upload-progress" aria-live="polite" hidden>
+                  <div><span id="remote-upload-label" data-i18n="files.remoteConnecting">Connecting to file…</span><strong id="remote-upload-percent">0%</strong></div>
+                  <progress id="remote-upload-meter" max="100" value="0"></progress>
+                </div>
+              </form>
+            </div>
+          </div>
+          <div id="upload-share-result" class="share-result" hidden>
+            <strong id="upload-share-name"></strong>
+            <div class="share-actions">
+              <button class="secondary" type="button" data-share-copy="url" data-i18n="resource.copyUrl">Copy URL</button>
+              <button class="secondary" type="button" data-share-copy="markdown" data-i18n="resource.copyMarkdown">Copy Markdown</button>
+              <button class="secondary" type="button" data-share-copy="html" data-i18n="resource.copyHtml">Copy HTML</button>
+            </div>
+            <button id="dismiss-upload-share" class="share-result-close" type="button" data-i18n-title="common.close" data-i18n-aria-label="common.close" title="Close" aria-label="Close">×</button>
+          </div>
+        </section>
+
+        <section id="view-manager" class="view" hidden>
+          <div class="view-heading">
+            <div><p class="eyebrow" data-i18n="manager.eyebrow">Resource library</p><h1 data-i18n="manager.title">Manage files and text</h1></div>
+          </div>
+          <div id="manager-library" class="file-manager surface">
+            <aside class="directory-panel">
+              <h2 data-i18n="files.directories">Directories</h2>
+              <div id="directory-tree" class="directory-tree"></div>
+            </aside>
+            <div class="file-browser">
+              <div class="section-title file-toolbar">
+                <h2 id="resource-manager-title" data-i18n="manager.allResources">All resources</h2>
+                <div class="toolbar-actions">
+                  <button id="resource-grid-view" class="view-mode active" type="button" data-i18n-title="files.grid" title="Grid view">▦</button>
+                  <button id="resource-list-view" class="view-mode" type="button" data-i18n-title="files.list" title="List view">☷</button>
+                  <button id="manager-refresh" class="text-button" type="button" data-i18n="common.refresh">Refresh</button>
+                </div>
+              </div>
+              <div id="resource-list" class="resource-grid"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="view-history" class="view" hidden>
+          <div class="view-heading"><div><p class="eyebrow" data-i18n="history.eyebrow">Activity</p><h1 data-i18n="history.title">Upload history</h1></div></div>
+          <div class="surface history-surface">
+            <div class="section-title"><h2 data-i18n="history.timeline">Timeline</h2><button id="history-refresh" class="text-button" type="button" data-i18n="common.refresh">Refresh</button></div>
+            <div id="history-list" class="history-list"></div>
+          </div>
+        </section>
+
+        <section id="view-security" class="view" hidden>
+          <div class="view-heading"><div><p class="eyebrow" data-i18n="nav.account">Account</p><h1 data-i18n="security.title">Security</h1></div></div>
+          <div class="surface security-card security-page-card">
+            <h2 data-i18n="password.change">Change password</h2>
+            <form id="password-form" class="stack-form">
+              <label><span data-i18n="password.current">Current password</span><span class="password-field"><input name="currentPassword" type="password" autocomplete="current-password" required><button type="button" data-password-toggle data-i18n-aria-label="password.toggle" aria-label="Show or hide password"></button></span></label>
+              <label><span data-i18n="password.new">New password</span><span class="password-field"><input name="newPassword" type="password" autocomplete="new-password" minlength="10" required><button type="button" data-password-toggle data-i18n-aria-label="password.toggle" aria-label="Show or hide password"></button></span></label>
+              <label><span data-i18n="password.confirm">Confirm password</span><span class="password-field"><input name="confirmPassword" type="password" autocomplete="new-password" minlength="10" required><button type="button" data-password-toggle data-i18n-aria-label="password.toggle" aria-label="Show or hide password"></button></span></label>
+              <button class="primary" type="submit" data-i18n="password.update">Update password</button>
+            </form>
+          </div>
+        </section>
+
+        <section id="view-api-keys" class="view" hidden>
+          <div class="view-heading"><div><p class="eyebrow" data-i18n="nav.account">Account</p><h1 data-i18n="apiKeys.title">API keys</h1></div></div>
+          <div class="surface api-keys-card">
+            <p class="muted" data-i18n="apiKeys.description">Use API keys with Agent skills and other trusted clients. A key is shown only once.</p>
+            <form id="api-key-form" class="stack-form">
+              <label><span data-i18n="apiKeys.name">Key name</span><input name="name" data-i18n-placeholder="apiKeys.namePlaceholder" placeholder="Agent on laptop" maxlength="64" required></label>
+              <label><span data-i18n="apiKeys.expires">Expires</span>
+                <select name="expiresInDays">
+                  <option value="" data-i18n="apiKeys.never">Never</option>
+                  <option value="30" data-i18n="apiKeys.days" data-i18n-days="30">30 days</option>
+                  <option value="90" data-i18n="apiKeys.days" data-i18n-days="90">90 days</option>
+                  <option value="365" data-i18n="apiKeys.days" data-i18n-days="365">365 days</option>
+                </select>
+              </label>
+              <button class="primary" type="submit" data-i18n="apiKeys.create">Create API key</button>
+            </form>
+            <div id="new-api-key" class="key-reveal" hidden>
+              <strong data-i18n="apiKeys.copyNow">Copy this key now</strong>
+              <code id="new-api-key-value"></code>
+              <button id="copy-api-key" class="secondary" type="button" data-i18n="apiKeys.copy">Copy key</button>
+            </div>
+            <div id="api-key-list" class="user-list"></div>
+          </div>
+        </section>
+
+        <section id="view-audit" class="view" hidden>
+          <div class="view-heading"><div><p class="eyebrow" data-i18n="nav.administration">Administration</p><h1 data-i18n="audit.title">Content audit</h1></div></div>
+          <div class="surface management-surface">
+            <p class="muted" data-i18n="audit.description">Review every active or blocked public link and its uploader. Blocking permanently deletes the R2 source object while retaining this audit record.</p>
+            <form id="audit-search-form" class="management-toolbar">
+              <label><span data-i18n="search.auditLabel">Search content</span><input name="q" type="search" maxlength="100" data-i18n-placeholder="search.auditPlaceholder" placeholder="File name, link, uploader, or directory"></label>
+              <div class="toolbar-actions"><button class="primary" type="submit" data-i18n="search.submit">Search</button><button class="secondary" id="audit-refresh" type="button" data-i18n="common.refresh">Refresh</button></div>
+            </form>
+            <div id="audit-list" class="audit-list"></div>
+            <div id="audit-pagination" class="pagination">
+              <span id="audit-page-summary"></span>
+              <div><button id="audit-page-previous" class="secondary" type="button" data-i18n="pagination.previous">Previous</button><button id="audit-page-next" class="secondary" type="button" data-i18n="pagination.next">Next</button></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="view-users" class="view" hidden>
+          <div class="view-heading">
+            <div><p class="eyebrow" data-i18n="nav.administration">Administration</p><h1 data-i18n="user.managementTitle">User management</h1></div>
+            <button id="open-user-create" class="primary" type="button" data-i18n="admin.createUser">Create user</button>
+          </div>
+          <div class="surface management-surface">
+            <form id="user-search-form" class="management-toolbar">
+              <label><span data-i18n="search.userLabel">Search users</span><input name="q" type="search" maxlength="100" data-i18n-placeholder="search.userPlaceholder" placeholder="Username"></label>
+              <div class="toolbar-actions"><button class="primary" type="submit" data-i18n="search.submit">Search</button><button class="secondary" id="user-refresh" type="button" data-i18n="common.refresh">Refresh</button></div>
+            </form>
+            <div id="user-list" class="user-list"></div>
+            <div id="user-pagination" class="pagination">
+              <span id="user-page-summary"></span>
+              <div><button id="user-page-previous" class="secondary" type="button" data-i18n="pagination.previous">Previous</button><button id="user-page-next" class="secondary" type="button" data-i18n="pagination.next">Next</button></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="view-admin" class="view" hidden>
+          <div class="view-heading"><div><p class="eyebrow" data-i18n="nav.administration">Administration</p><h1 data-i18n="admin.title">Site administration</h1></div></div>
+          <div class="admin-columns">
+            <div class="surface site-settings-card">
+              <h2 data-i18n="appearance.title">Site appearance</h2>
+              <p class="muted" data-i18n="appearance.description">Customize the public title and welcome copy. Values are shared across languages and rendered as plain text.</p>
+              <form id="site-settings-form" class="stack-form">
+                <label><span data-i18n="appearance.siteTitle">Site title</span><input name="siteTitle" maxlength="48" required></label>
+                <label><span data-i18n="appearance.tagline">Tagline</span><input name="siteTagline" maxlength="100" required></label>
+                <label><span data-i18n="appearance.welcomeTitle">Welcome title</span><input name="welcomeTitle" maxlength="120" required></label>
+                <label><span data-i18n="appearance.welcomeDescription">Welcome description</span><textarea name="welcomeDescription" rows="4" maxlength="240" required></textarea></label>
+                <button class="primary" type="submit" data-i18n="appearance.submit">Save site appearance</button>
+              </form>
+            </div>
+            <div class="surface retention-card">
+              <h2 data-i18n="retention.title">R2 retention</h2>
+              <p class="muted" data-i18n="retention.description">The deployed backend removes objects older than this value during its daily maintenance run. No Cloudflare credentials are required here.</p>
+              <form id="retention-form" class="stack-form">
+                <label><span data-i18n="retention.days">Retention days</span><input name="retentionDays" type="number" min="1" max="3650" step="1" required></label>
+                <p class="retention-warning" data-i18n="retention.warning">Reducing this value can permanently delete older R2 objects during the next maintenance run.</p>
+                <button class="primary" type="submit" data-i18n="retention.submit">Save retention policy</button>
+              </form>
+            </div>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="user-create-drawer" class="drawer">
+    <div class="drawer-panel">
+      <div class="drawer-heading">
+        <div><p class="eyebrow" data-i18n="user.managementTitle">User management</p><h2 data-i18n="admin.createUser">Create user</h2></div>
+        <button id="close-user-create" class="icon-button" type="button" data-i18n-title="common.close" data-i18n-aria-label="common.close" title="Close" aria-label="Close">×</button>
+      </div>
+      <p class="muted" data-i18n="admin.createUserDescription">The assigned password must be changed on first login.</p>
+      <form id="user-form" class="stack-form">
+        <label><span data-i18n="common.username">Username</span><input name="username" minlength="3" maxlength="32" required></label>
+        <label><span data-i18n="password.temporary">Temporary password</span><span class="password-field"><input name="password" type="password" minlength="10" required><button type="button" data-password-toggle data-i18n-aria-label="password.toggle" aria-label="Show or hide password"></button></span></label>
+        <label><span data-i18n="password.confirm">Confirm password</span><span class="password-field"><input name="confirmPassword" type="password" minlength="10" required><button type="button" data-password-toggle data-i18n-aria-label="password.toggle" aria-label="Show or hide password"></button></span></label>
+        <div class="password-tools"><button id="generate-user-password" class="secondary" type="button" data-i18n="password.generate">Generate password</button><button id="copy-user-password" class="secondary" type="button" data-i18n="password.copy">Copy password</button></div>
+        <button class="primary" type="submit" data-i18n="admin.createUserSubmit">Create user</button>
+      </form>
+    </div>
+  </dialog>
+
+  <dialog id="password-reset-dialog" class="password-dialog">
+    <form id="reset-password-form" class="stack-form">
+      <h2 data-i18n="user.resetPassword">Reset password</h2>
+      <p id="reset-password-user" class="muted"></p>
+      <label><span data-i18n="password.temporary">Temporary password</span><span class="password-field"><input name="password" type="password" minlength="10" required><button type="button" data-password-toggle data-i18n-aria-label="password.toggle" aria-label="Show or hide password"></button></span></label>
+      <label><span data-i18n="password.confirm">Confirm password</span><span class="password-field"><input name="confirmPassword" type="password" minlength="10" required><button type="button" data-password-toggle data-i18n-aria-label="password.toggle" aria-label="Show or hide password"></button></span></label>
+      <div class="password-tools"><button id="generate-reset-password" class="secondary" type="button" data-i18n="password.generate">Generate password</button><button id="copy-reset-password" class="secondary" type="button" data-i18n="password.copy">Copy password</button></div>
+      <div class="dialog-actions"><button id="cancel-password-reset" class="secondary" type="button" data-i18n="common.cancel">Cancel</button><button class="primary" type="submit" data-i18n="user.resetPassword">Reset password</button></div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>

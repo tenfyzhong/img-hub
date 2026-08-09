@@ -1,0 +1,26 @@
+{
+  "name": "img-hub",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "test:local": "node --test && node --test local-tests/worker.mjs",
+    "dev": "wrangler dev",
+    "dev:local": "wrangler dev --local --var TURNSTILE_SITE_KEY:1x00000000000000000000AA --var TURNSTILE_SECRET_KEY:1x0000000000000000000000000000000AA",
+    "local:reset": "node scripts/reset-local.mjs",
+    "admin:reset": "node scripts/reset-admin-password.mjs",
+    "deploy": "node scripts/deploy.mjs",
+    "deploy:cloudflare": "node scripts/deploy.mjs",
+    "check:deploy": "wrangler deploy --dry-run",
+    "build:extension": "node extension/scripts/build.mjs",
+    "publish:extension": "node scripts/publish-extensions.mjs"
+  },
+  "devDependencies": {
+    "fflate": "^0.8.3",
+    "wrangler": "^4.28.1"
+  },
+  "overrides": {
+    "undici": "^7.29.0"
+  }
+}

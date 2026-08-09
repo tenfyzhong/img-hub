@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ImgHub Companion</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <div class="mark" aria-hidden="true">IH</div>
+    <div>
+      <h1>ImgHub</h1>
+      <p>Keep uploads close at hand.</p>
+    </div>
+  </header>
+
+  <main>
+    <form id="connection-form" class="card">
+      <label for="deployment-url">Deployment URL</label>
+      <div class="row">
+        <input id="deployment-url" name="deploymentUrl" type="url" placeholder="https://images.example.com" required>
+        <button type="submit" class="secondary">Save</button>
+      </div>
+      <p id="connection-status" class="hint" role="status"></p>
+    </form>
+
+    <form id="login-form" class="card">
+      <h2>Sign in</h2>
+      <label for="username">Username</label>
+      <input id="username" name="username" autocomplete="username" required>
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required>
+      <button type="submit">Sign in</button>
+    </form>
+
+    <section id="workspace" hidden>
+      <div class="session-line">
+        <span>Signed in as <strong id="current-user"></strong></span>
+        <button id="logout-button" type="button" class="link">Sign out</button>
+      </div>
+
+      <form id="upload-form" class="card">
+        <h2>Upload image</h2>
+        <label for="directory">Directory <span>(optional)</span></label>
+        <input id="directory" name="directory" placeholder="screenshots/2026">
+        <label for="image-file">Image</label>
+        <input id="image-file" name="file" type="file" accept="image/*" required>
+        <button type="submit">Upload</button>
+      </form>
+
+      <section class="card">
+        <div class="section-heading">
+          <h2>Your images</h2>
+          <button id="refresh-button" type="button" class="link">Refresh</button>
+        </div>
+        <p id="empty-state" class="hint">No images uploaded yet.</p>
+        <ul id="resource-list"></ul>
+      </section>
+    </section>
+
+    <p id="message" role="alert"></p>
+    <input id="replacement-file" type="file" accept="image/*" hidden>
+  </main>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

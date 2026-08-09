@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Complete ImgHub deployment guide for Cloudflare and GitHub Actions.">
+  <title>ImgHub deployment guide</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <a class="brand" href="./"><span class="mark">◫</span> ImgHub Guide</a>
+    <nav class="languages"><a href="./">English</a><a href="zh-CN.html">中文</a><a href="https://github.com/tenfyzhong/img-hub">GitHub</a><a href="https://github.com/tenfyzhong/img-hub/blob/main/CONTRIBUTING.md">Contribute</a></nav>
+  </header>
+  <div class="layout">
+    <aside>
+      <strong>On this page</strong>
+      <nav>
+        <a href="#choose">Choose a deployment</a>
+        <a href="#button">Cloudflare button</a>
+        <a href="#cli">CLI deployment</a>
+        <a href="#github">GitHub Actions</a>
+        <a href="#api-keys">API keys &amp; Agent Skill</a>
+        <a href="#extension">Browser extension</a>
+        <a href="#release">Version releases</a>
+        <a href="#first-run">First run</a>
+        <a href="#language">Language</a>
+        <a href="#admin-recovery">Administrator recovery</a>
+        <a href="#moderation">Administration &amp; moderation</a>
+        <a href="#lifecycle">R2 retention</a>
+        <a href="#paths">Storage paths</a>
+        <a href="#cache">Public caching</a>
+        <a href="#appearance">Site appearance</a>
+        <a href="#local">Local development</a>
+        <a href="#troubleshooting">Troubleshooting</a>
+      </nav>
+    </aside>
+    <main>
+      <div class="hero">
+        <p class="eyebrow">Cloudflare deployment</p>
+        <h1>From repository to stable links.</h1>
+        <p class="lead">Deploy a private, multi-user file and text hub with D1 and R2. No shared upload code and no external storage channel.</p>
+        <div class="actions">
+          <a class="button" href="https://deploy.workers.cloudflare.com/?url=https://github.com/tenfyzhong/img-hub">Deploy to Cloudflare</a>
+          <a class="button secondary" href="https://github.com/tenfyzhong/img-hub">View source</a>
+        </div>
+      </div>
+
+      <section id="choose">
+        <h2>Choose a deployment path</h2>
+        <div class="cards">
+          <div class="card"><strong>Cloudflare button</strong><p>Fastest start. The detected deploy command provisions D1, R2, and Turnstile before the final Worker deployment.</p></div>
+          <div class="card"><strong>CLI one-command</strong><p>Explicit provisioning, the initial D1 schema, Turnstile, the daily retention task, and Worker deployment.</p></div>
+          <div class="card"><strong>GitHub Actions</strong><p>Secret-free CI on develop and stable deployment on main, including D1/R2 initialization and the scheduled backend task.</p></div>
+          <div class="card"><strong>Local development</strong><p>Local D1 and R2 persistence through Wrangler, with no remote resources required.</p></div>
+        </div>
+      </section>
+
+      <section id="button">
+        <h2>One-click deployment</h2>
+        <ol>
+          <li>Open the <a href="https://deploy.workers.cloudflare.com/?url=https://github.com/tenfyzhong/img-hub">Cloudflare deployment screen</a>.</li>
+          <li>Authorize the requested account, keep the detected <code>npm run deploy</code> command, and deploy. It automatically provisions D1, R2, and a managed Turnstile widget.</li>
+          <li>Open the generated <code>workers.dev</code> URL. The first request initializes the D1 schema.</li>
+          <li>Set a password for the fixed administrator username <code>admin</code>. Retention defaults to 91 days and can be changed under <strong>Site settings</strong>.</li>
+        </ol>
+        <div class="callout"><p>If automatic resource provisioning is unavailable for your account, use the CLI flow. It discovers or creates named resources explicitly.</p></div>
+      </section>
+
+      <section id="cli">
+        <h2>One-command CLI deployment</h2>
+        <p>Install Node.js 22 or newer, then run:</p>
+        <pre><code>git clone https://github.com/tenfyzhong/img-hub.git
+cd img-hub
+./deploy.sh</code></pre>
+        <p>The script opens Wrangler login if needed, creates or reuses <code>img-hub-db</code>, <code>img-hub-files</code>, and a managed Turnstile widget, applies the initial D1 schema, stores the widget secret as a Worker Secret, and deploys the daily retention task.</p>
+        <h3>Custom names or placement</h3>
+        <pre><code>IMG_HUB_DATABASE_NAME=my-hub-db \
+IMG_HUB_BUCKET_NAME=my-hub-files \
+IMG_HUB_D1_LOCATION=apac \
+IMG_HUB_R2_LOCATION=apac \
+IMG_HUB_TURNSTILE_DOMAINS=images.example.com \
+./deploy.sh</code></pre>
+        <p>The operation is idempotent and never deletes a D1 database or R2 bucket. The generated <code>workers.dev</code> hostname is detected automatically; <code>IMG_HUB_TURNSTILE_DOMAINS</code> adds comma-separated custom hostnames.</p>
+      </section>
+
+      <section id="github">
+        <h2>GitHub Actions deployment</h2>
+        <ol>
+          <li>Fork the repository for <strong>Sync fork</strong> updates, or use it as a Template repository for an independent history. The maintainer enables <strong>Settings → General → Template repository</strong> once.</li>
+          <li>Create a Cloudflare token permitted to edit Worker scripts, D1, R2, and Turnstile. Automatic challenge setup requires <strong>Turnstile Sites Write</strong>.</li>
+          <li>Add repository Action secrets <code>CLOUDFLARE_API_TOKEN</code> and <code>CLOUDFLARE_ACCOUNT_ID</code>.</li>
+          <li>Run <strong>Deploy to Cloudflare</strong> manually or push to <code>main</code>.</li>
+        </ol>
+        <p><code>main</code> is always stable and deployable; development enters through <code>develop</code>. Secret-free CI validates pull requests, while every <code>main</code> update runs stable verification. See the <a href="https://github.com/tenfyzhong/img-hub/blob/main/CONTRIBUTING.md">contribution guide</a> for branch protection and release flow.</p>
+        <p>The deployment workflow works unchanged in the original repository and every fork. Each repository supplies its own secrets and therefore deploys only to its owner's Cloudflare account. Its default <code>img-hub-{repository-id}</code> prefix prevents Worker, D1, and R2 collisions; an <code>IMG_HUB_RESOURCE_PREFIX</code> repository variable overrides it.</p>
+        <p>The stable workflow tests and builds the project, initializes D1/R2/Turnstile, applies the initial D1 schema, and deploys the application with its scheduled retention task and Turnstile secret. It reports a skipped deployment instead of failing when Cloudflare secrets are absent. Fork owners enable Actions once, keep custom commits off <code>main</code>, then use <strong>Sync fork → Update branch</strong>. Template-created repositories do not have this sync relationship.</p>
+        <h3>Publish this guide</h3>
+        <p>In repository <strong>Settings → Pages</strong>, select <strong>GitHub Actions</strong> as the source. The Pages workflow publishes both languages from <code>docs/</code>.</p>
+      </section>
+
+      <section id="api-keys">
+        <h2>API keys and Agent Skill</h2>
+        <p>After changing a temporary password, open the dedicated, full-width <strong>API keys</strong> menu directly below <strong>Security</strong> and create a named key. The password surface is also full-width. Multiple keys expand downward on this separate page without affecting the password form. Copy the <code>imh_...</code> value immediately: only the hash is stored. Keys are revocable, may expire, and are limited to the owner's files and text.</p>
+        <p>Copy <code>skills/img-hub</code> into the AI agent's skills directory and configure its process:</p>
+        <pre><code>export IMG_HUB_URL=https://images.example.com
+export IMG_HUB_API_KEY=imh_your_key_shown_once</code></pre>
+        <p>The included client lists, uploads, replaces, and deletes files, and publishes or replaces text. Never place <code>IMG_HUB_API_KEY</code> in prompts, logs, or source control.</p>
+      </section>
+
+      <section id="extension">
+        <h2>Chrome, Edge, and Firefox extension</h2>
+        <p>Each GitHub Release contains a generic Chromium ZIP for Chrome and Edge and a Firefox ZIP. No service domain is compiled into either package: configure the deployed URL in the popup, grant access to that origin, then sign in.</p>
+        <p>Unzip the Chromium package and use <strong>Developer mode → Load unpacked</strong>. For Firefox development, use <code>about:debugging#/runtime/this-firefox</code> and <strong>Load Temporary Add-on</strong>. The extension stores its deployment URL and login token locally, never the password, and supports upload, list, copy URL, replace, and delete.</p>
+        <pre><code>npm install
+npm run build:extension</code></pre>
+      </section>
+
+      <section id="release">
+        <h2>GitHub Release and store publication</h2>
+        <p>Set the numeric <code>package.json</code> version, merge the release to <code>main</code>, then push its matching tag such as <code>v0.2.0</code>. The release workflow rejects tags outside <code>main</code>, tests, builds the two generic packages, deploys to this repository's Cloudflare account when configured, and creates a GitHub Release.</p>
+        <p>Automatic store publication is enabled per complete secret set:</p>
+        <ul>
+          <li>Chrome: <code>CHROME_PUBLISHER_ID</code>, <code>CHROME_EXTENSION_ID</code>, <code>CHROME_CLIENT_ID</code>, <code>CHROME_CLIENT_SECRET</code>, <code>CHROME_REFRESH_TOKEN</code></li>
+          <li>Edge: <code>EDGE_PRODUCT_ID</code>, <code>EDGE_CLIENT_ID</code>, <code>EDGE_API_KEY</code></li>
+          <li>Firefox: <code>WEB_EXT_API_KEY</code>, <code>WEB_EXT_API_SECRET</code></li>
+        </ul>
+        <p>Create each listing once in its developer portal. An incomplete set skips only that store.</p>
+      </section>
+
+      <section id="first-run">
+        <h2>First run and accounts</h2>
+        <p>There is no default password. The fixed administrator username is <code>admin</code>; the first visitor chooses and confirms its password on the initial screen. Password fields support show/hide controls. Setup closes after that account exists.</p>
+        <ol>
+          <li>Create users in Administration and share temporary passwords securely.</li>
+          <li>Users can sign in with a temporary password, but content operations remain blocked until they change it.</li>
+          <li>An administrator reset revokes every session for that user and restores the password-change requirement.</li>
+        </ol>
+        <p>Passwords are salted PBKDF2-SHA-256 hashes. A browser access session lasts 7 days and a rotating refresh session lasts 30 days. The web UI automatically uses the HttpOnly refresh cookie after access expiry and invalidates it while issuing a new pair; 30 days without a refresh requires password login. D1 stores only token hashes, while both cookies use SameSite=Strict and Secure over HTTPS.</p>
+        <p>Three failed logins for the same normalized username and Cloudflare client IP within 15 minutes require an on-demand Turnstile check. The Worker validates each single-use token for the <code>login</code> action and current hostname. D1 stores only a SHA-256 attempt identifier and counters; a successful login clears them.</p>
+      </section>
+
+      <section id="language">
+        <h2>Browser language</h2>
+        <p>The first preferred browser locale selects the interface: a language beginning with <code>zh</code> uses Simplified Chinese and every other language uses English. The header's <strong>EN / 中文</strong> control saves an explicit browser-local override.</p>
+        <p>Static controls, dynamic lists and messages, confirmations, dates, empty states, and common API errors are translated. Administrator-configured site appearance is shared between languages; built-in unsaved welcome copy has separate translations.</p>
+      </section>
+
+      <section id="admin-recovery">
+        <h2>Forgotten administrator password</h2>
+        <p>There is no email recovery or backdoor. A deployment owner resets the sole administrator with the included D1 tool. For local data, stop the server and run:</p>
+        <pre><code>npm run admin:reset
+npm run dev:local</code></pre>
+        <p>For a deployment, authenticate Wrangler, find the exact database name in D1, and explicitly select the remote database:</p>
+        <pre><code>npx wrangler login
+npm run admin:reset -- --remote --database YOUR_D1_DATABASE_NAME</code></pre>
+        <p>The hidden prompt creates a temporary password. Confirm <code>administrators_reset</code> is <code>1</code> and <code>administrator_username</code> is <code>admin</code>. The operation revokes administrator sessions and API keys, safely normalizes a legacy administrator name to <code>admin</code>, preserves the former name only as a public-URL alias, and requires a different password after login. A reset count of <code>0</code> means the wrong or an uninitialized database was selected.</p>
+      </section>
+
+      <section id="moderation">
+        <h2>Administration address, content audit, and disable account</h2>
+        <p>There is no separate <code>/admin</code> URL. Open the site root, such as <code>http://localhost:8787</code>, sign in with username <code>admin</code>, and select <strong>Administration</strong>. A new database shows administrator password-and-confirmation setup at that same address. If local setup does not appear, persistent <code>.wrangler/state/</code> already contains an account: use <code>npm run admin:reset</code> to preserve data or stop the server and use <code>npm run local:reset</code> to erase local test state.</p>
+        <p><strong>Content audit</strong> and <strong>User management</strong> are separate administrator menus. Both lists use server-side search and pagination. User search fills the row and <strong>Create user</strong> opens a right-side drawer. Audit search covers file names, public IDs, uploaders, directories, and kinds. Blocking permanently deletes the R2 source object, returns 404 for the public link even after a cache hit, hides it from its owner, and retains the audit tombstone.</p>
+        <p><strong>Disable account</strong> revokes the user's sessions and API keys, rejects login, and makes all resources owned by that account unavailable. Re-enabling permits a fresh login without restoring old credentials. The administrator cannot be disabled.</p>
+      </section>
+
+      <section id="lifecycle">
+        <h2>R2 retention</h2>
+        <p>Administrators choose 1–3650 days under <strong>Site settings</strong>; D1 stores the value and supplies the 91-day default. The deployed Worker's daily scheduled task lists only <code>users/</code> through its R2 binding and deletes expired objects.</p>
+        <p>Deployment removes only the obsolete fixed <code>img-hub-default-expiration</code> rule from earlier development builds; unrelated bucket lifecycle rules remain untouched.</p>
+        <p>The website never asks for a Cloudflare Account ID, bucket name, or API token and does not keep a runtime management token. Back up D1 and R2 before reducing retention because deletion is irreversible.</p>
+      </section>
+
+      <section id="paths">
+        <h2>Isolation, paths, and replacement</h2>
+        <pre><code>users/{user-id}/file/trips/lake-20260806T040506123.png
+/file/pub_7b62f18c6d304476a5edc8a4de176cb1?v=1
+
+users/{user-id}/text/notes/hello-20260806T040506123.md
+/text/pub_91ac1f75e0c84353bb9eca92c4f828a0?v=1</code></pre>
+        <p>Each user ID owns separate internal file and text roots, while new public links contain only a random D1-backed ID. Usernames, directories, and names are not exposed. Legacy links remain readable. Replacement retains the object key and random public path, increments D1's version, and returns a new <code>?v=</code> value.</p>
+        <p>The <strong>Upload &amp; publish</strong> entry provides equal-height tabs for file upload, text publishing, and remote-file import, with the import tab last. New file and text names receive a millisecond UTC timestamp; a blank text name is generated from its format, and text results provide the same URL/Markdown/HTML copy actions as files. Before direct upload, the browser calculates MD5 in chunks; a same-user, same-size match is copied to an independent R2 object without sending the file again. Remote import accepts images, documents, archives, audio, video, text, and other HTTP(S) files while retaining private-network and size checks. The enlarged drop zone opens the picker when clicked and accepts dragged files, pasted files, and clipboard images; uploads start immediately with progress. Remote imports stream real fetched-byte progress, use an indeterminate bar when the source omits its length, and then report the storage-saving stage. The separate <strong>Manage</strong> entry mixes files and texts in one resource list and root directory tree, with directory filtering, grid/list views, URL/Markdown/HTML copy, replacement, and deletion. The publishing UI supports Markdown and restricted rich text with equal-sized editor frames. Manager cards preview text, while oversized or unusually tall images remain contained inside the card. A durable timeline records uploads, imports, replacements, and deletions.</p>
+      </section>
+
+      <section id="cache">
+        <h2>Cached file and text reads</h2>
+        <p>GET requests with the current version, such as <code>/file/pub_7b62…?v=3</code> and <code>/text/pub_91ac…?v=2</code>, use <code>caches.default</code>. A small D1 availability check runs first so moderation and disabled accounts override old cache entries; an allowed hit then skips the large R2 object read.</p>
+        <p>The response header is <code>X-ImgHub-Cache: MISS</code> when content is stored, <code>HIT</code> when served from cache, and <code>BYPASS</code> for an unversioned URL, incorrect version, extra query parameters, or HEAD. Current positive numeric versions receive one-year shared-cache retention, while browser <code>max-age=0</code> preserves the moderation check. Cache API entries are local to each Cloudflare data center.</p>
+      </section>
+
+      <section id="appearance">
+        <h2>Administrator site appearance</h2>
+        <p>Open the separate <strong>Site settings</strong> administrator menu to configure the site title, tagline, welcome title, and welcome description. Values are kept in D1, have explicit length limits, and are rendered as plain text. Installations without saved values use the built-in defaults.</p>
+      </section>
+
+      <section id="local">
+        <h2>Local development</h2>
+        <pre><code>npm install
+npm run dev:local</code></pre>
+        <p>Open <code>http://localhost:8787</code>. A fresh state starts by setting the password for administrator <code>admin</code>; after that, use the real browser UI to test accounts, uploads, text, replacement, public links, deletion, API keys, and site appearance. Fail three logins for a test username and confirm Turnstile appears. Press <code>Ctrl+C</code> to stop.</p>
+        <p>The command explicitly uses <code>wrangler dev --local</code>. D1, R2, assets, and cache stay local, need no Cloudflare credentials, and persist under the ignored <code>.wrangler/state/</code> directory. Local challenges use Cloudflare's public always-pass test keys; only an explicitly triggered challenge reaches the public Siteverify endpoint.</p>
+        <h3>Start again from an empty local installation</h3>
+        <pre><code>npm run local:reset
+npm run dev:local</code></pre>
+        <p>Stop the server before resetting. The reset removes only this checkout's local D1, R2, and cache state; it cannot touch deployed Cloudflare resources.</p>
+        <h3>Automated local checks</h3>
+        <pre><code>npm test
+npm run test:local</code></pre>
+        <p>The unit suite uses in-memory doubles. <code>test:local</code> also starts the complete Worker in an isolated non-persistent Wrangler runtime. Validate the production bundle without publishing with <code>npx wrangler deploy --dry-run</code>.</p>
+      </section>
+
+      <section id="troubleshooting">
+        <h2>Troubleshooting</h2>
+        <h3>The Action cannot create resources</h3>
+        <p>Check both secrets, the selected Cloudflare account, and token permissions for Worker scripts, D1, and R2.</p>
+        <h3>Retention has not run yet</h3>
+        <p>The scheduled backend runs daily at 03:00 UTC. Confirm the Worker has the checked-in cron trigger and the expected local or deployed R2 binding.</p>
+        <h3>An expired URL returns 404 but remains listed</h3>
+        <p>The retention task removes the object independently of D1. The owner can delete the stale row from the library.</p>
+        <h3>A replacement still shows old content</h3>
+        <p>Copy the newly returned URL. Its path is unchanged, but the <code>?v=</code> value must match the latest version.</p>
+      </section>
+    </main>
+  </div>
+  <footer>ImgHub · MIT License</footer>
+</body>
+</html>
