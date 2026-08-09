@@ -81,8 +81,10 @@ IMG_HUB_BUCKET_NAME=my-hub-files \
 IMG_HUB_D1_LOCATION=apac \
 IMG_HUB_R2_LOCATION=apac \
 IMG_HUB_TURNSTILE_DOMAINS=images.example.com \
+IMG_HUB_WECHAT_VERIFY_FILENAME=30192898bf0120ae25f69bdce9e25e77.txt \
+IMG_HUB_WECHAT_VERIFY_CONTENT=verification-content-from-wechat \
 ./deploy.sh</code></pre>
-        <p>The operation is idempotent and never deletes a D1 database or R2 bucket. The generated <code>workers.dev</code> hostname is detected automatically; <code>IMG_HUB_TURNSTILE_DOMAINS</code> adds comma-separated custom hostnames.</p>
+        <p>The operation is idempotent and never deletes a D1 database or R2 bucket. The generated <code>workers.dev</code> hostname is detected automatically; <code>IMG_HUB_TURNSTILE_DOMAINS</code> adds comma-separated custom hostnames. Provide both optional WeChat variables together to publish the exact verification content at the site root without changing the checked-in <code>public/</code> directory.</p>
       </section>
 
       <section id="cloudflare-token">
@@ -135,8 +137,12 @@ IMG_HUB_TURNSTILE_DOMAINS=images.example.com \
           <li>Fork the repository for <strong>Sync fork</strong> updates, or use it as a Template repository for an independent history. The maintainer enables <strong>Settings → General → Template repository</strong> once.</li>
           <li>Follow the <a href="#cloudflare-token">least-privilege token guide</a>. Automatic challenge setup requires Turnstile write access.</li>
           <li>Add repository Action secrets <code>CLOUDFLARE_API_TOKEN</code> and <code>CLOUDFLARE_ACCOUNT_ID</code>.</li>
+          <li>When WeChat supplies a verification file, add repository variables <code>IMG_HUB_WECHAT_VERIFY_FILENAME</code> and <code>IMG_HUB_WECHAT_VERIFY_CONTENT</code> under <strong>Settings → Secrets and variables → Actions → Variables</strong>.</li>
           <li>Run <strong>Deploy to Cloudflare</strong> manually or push to <code>main</code>.</li>
         </ol>
+        <h3>Optional WeChat root verification file</h3>
+        <p>Set both variables or neither. Use the issued root-level <code>.txt</code> filename, such as <code>30192898bf0120ae25f69bdce9e25e77.txt</code>, and copy the issued content exactly. Safe names may contain letters, numbers, <code>_</code>, and <code>-</code>, but no directory, spaces, or other extension. A partial or unsafe configuration fails before any Cloudflare resource changes.</p>
+        <p>Deployment builds an isolated temporary copy of the static assets, writes the content without adding a newline, publishes it at a URL such as <code>https://images.example.com/30192898bf0120ae25f69bdce9e25e77.txt</code>, and removes the copy afterward. It does not modify or commit <code>public/</code>. The value is intentionally a Repository Variable because the verification content becomes public at that URL. Both <code>deploy.yml</code> and <code>release.yml</code> use the same repository-specific values, including in forks.</p>
         <p><code>main</code> is always stable and deployable; development enters through <code>develop</code>. Secret-free CI validates pull requests, while every <code>main</code> update runs stable verification. See the <a href="https://github.com/tenfyzhong/img-hub/blob/main/CONTRIBUTING.md">contribution guide</a> for branch protection and release flow.</p>
         <p>The deployment workflow works unchanged in the original repository and every fork. Each repository supplies its own secrets and therefore deploys only to its owner's Cloudflare account. Its default <code>img-hub-{repository-id}</code> prefix prevents Worker, D1, and R2 collisions; an <code>IMG_HUB_RESOURCE_PREFIX</code> repository variable overrides it.</p>
         <p>The stable workflow tests and builds the project, initializes D1/R2/Turnstile, applies the initial D1 schema, and deploys the application with its scheduled retention task and Turnstile secret. It reports a skipped deployment instead of failing when Cloudflare secrets are absent. Fork owners enable Actions once, keep custom commits off <code>main</code>, then use <strong>Sync fork → Update branch</strong>. Template-created repositories do not have this sync relationship.</p>
@@ -166,7 +172,7 @@ npm run build:extension</code></pre>
 
       <section id="release">
         <h2>GitHub Release and store publication</h2>
-        <p>Set the numeric <code>package.json</code> version, merge the release to <code>main</code>, then push its matching tag such as <code>v0.2.0</code>. The release workflow rejects tags outside <code>main</code>, tests, builds the two generic packages, deploys to this repository's Cloudflare account when configured, and creates a GitHub Release.</p>
+        <p>Set the numeric <code>package.json</code> version, merge the release to <code>main</code>, then push its matching tag such as <code>v0.3.0</code>. The release workflow rejects tags outside <code>main</code>, tests, builds the two generic packages, deploys to this repository's Cloudflare account when configured, and creates a GitHub Release.</p>
         <p>Automatic store publication is enabled per complete secret set:</p>
         <ul>
           <li>Chrome: <code>CHROME_PUBLISHER_ID</code>, <code>CHROME_EXTENSION_ID</code>, <code>CHROME_CLIENT_ID</code>, <code>CHROME_CLIENT_SECRET</code>, <code>CHROME_REFRESH_TOKEN</code></li>

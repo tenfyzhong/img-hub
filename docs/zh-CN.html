@@ -61,8 +61,10 @@ IMG_HUB_BUCKET_NAME=my-hub-files \
 IMG_HUB_D1_LOCATION=apac \
 IMG_HUB_R2_LOCATION=apac \
 IMG_HUB_TURNSTILE_DOMAINS=images.example.com \
+IMG_HUB_WECHAT_VERIFY_FILENAME=30192898bf0120ae25f69bdce9e25e77.txt \
+IMG_HUB_WECHAT_VERIFY_CONTENT=verification-content-from-wechat \
 ./deploy.sh</code></pre>
-        <p>脚本可以重复执行，而且不会删除 D1 数据库或 R2 bucket。生成的 <code>workers.dev</code> 域名会自动识别；<code>IMG_HUB_TURNSTILE_DOMAINS</code> 用于添加逗号分隔的自定义域名。</p>
+        <p>脚本可以重复执行，而且不会删除 D1 数据库或 R2 bucket。生成的 <code>workers.dev</code> 域名会自动识别；<code>IMG_HUB_TURNSTILE_DOMAINS</code> 用于添加逗号分隔的自定义域名。同时提供两个可选的微信验证变量，即可把内容原样发布到站点根路径，而且不会修改仓库中的 <code>public/</code> 目录。</p>
       </section>
 
       <section id="cloudflare-token">
@@ -115,8 +117,12 @@ IMG_HUB_TURNSTILE_DOMAINS=images.example.com \
           <li>需要 <strong>Sync fork</strong> 更新时 Fork 仓库；需要独立历史时从模板创建。维护者需要先在 <strong>Settings → General → Template repository</strong> 开启模板选项。</li>
           <li>按照上面的<a href="#cloudflare-token">最小权限 Token 指引</a>创建 Cloudflare Token；自动验证配置需要 Turnstile 写权限。</li>
           <li>添加 Action Secrets：<code>CLOUDFLARE_API_TOKEN</code> 和 <code>CLOUDFLARE_ACCOUNT_ID</code>。</li>
+          <li>如果微信提供了验证文件，在 <strong>Settings → Secrets and variables → Actions → Variables</strong> 中添加 Repository Variables <code>IMG_HUB_WECHAT_VERIFY_FILENAME</code> 和 <code>IMG_HUB_WECHAT_VERIFY_CONTENT</code>。</li>
           <li>手工运行 <strong>Deploy to Cloudflare</strong>，或推送到 <code>main</code>。</li>
         </ol>
+        <h3>可选的微信根路径验证文件</h3>
+        <p>必须两个变量都配置或都不配置。文件名填写微信给出的根路径 <code>.txt</code> 名称，例如 <code>30192898bf0120ae25f69bdce9e25e77.txt</code>；内容要完整复制。安全文件名只能包含字母、数字、<code>_</code>、<code>-</code>，不能包含目录、空格或其他扩展名。只配置一项或文件名不安全时，脚本会在改动 Cloudflare 资源之前失败。</p>
+        <p>部署会创建隔离的静态资源临时副本，不额外添加换行地写入内容，发布到类似 <code>https://images.example.com/30192898bf0120ae25f69bdce9e25e77.txt</code> 的地址，并在结束后删除副本；不会修改或提交 <code>public/</code>。验证内容部署后本来就会公开，因此使用 Repository Variable。<code>deploy.yml</code> 和 <code>release.yml</code> 会读取当前仓库自己的相同变量，Fork 也彼此隔离。</p>
         <p><code>main</code> 始终稳定且可部署，开发代码通过 <code>develop</code> 集成。无 Secret 的 CI 验证 PR，每次 <code>main</code> 更新都运行稳定构建。分支保护和发布流程见<a href="https://github.com/tenfyzhong/img-hub/blob/main/CONTRIBUTING.zh-CN.md">贡献指南</a>。</p>
         <p>同一份部署 workflow 适用于原仓库与每个 fork。每个仓库使用自己的 Secrets，所以只会部署到仓库所有者自己的 Cloudflare 账号。默认前缀 <code>img-hub-{repository-id}</code> 可避免不同仓库的 Worker、D1、R2 重名；可用 Repository Variable <code>IMG_HUB_RESOURCE_PREFIX</code> 覆盖。</p>
         <p>稳定工作流先测试和构建，然后初始化 D1/R2/Turnstile、应用初始 D1 schema，并带每日保留任务和 Turnstile Secret 部署。未配置 Cloudflare Secrets 时会明确跳过部署，而不是让 Fork 的验证失败。Fork 用户先启用一次 Actions，保持 <code>main</code> 没有自定义提交，再使用 <strong>Sync fork → Update branch</strong>；模板创建的仓库没有该同步关系。</p>
@@ -146,7 +152,7 @@ npm run build:extension</code></pre>
 
       <section id="release">
         <h2>GitHub Release 与商店发布</h2>
-        <p>先修改 <code>package.json</code> 的纯数字版本，将发布代码合入 <code>main</code>，再推送匹配 Tag，例如 <code>v0.2.0</code>。发布 workflow 会拒绝不属于 <code>main</code> 的 Tag，运行测试并构建两个通用插件包；配置 Cloudflare 凭据时部署到当前仓库自己的账号；最后创建 GitHub Release。</p>
+        <p>先修改 <code>package.json</code> 的纯数字版本，将发布代码合入 <code>main</code>，再推送匹配 Tag，例如 <code>v0.3.0</code>。发布 workflow 会拒绝不属于 <code>main</code> 的 Tag，运行测试并构建两个通用插件包；配置 Cloudflare 凭据时部署到当前仓库自己的账号；最后创建 GitHub Release。</p>
         <p>每个商店只有在完整配置对应 Secrets 时才自动发布：</p>
         <ul>
           <li>Chrome：<code>CHROME_PUBLISHER_ID</code>、<code>CHROME_EXTENSION_ID</code>、<code>CHROME_CLIENT_ID</code>、<code>CHROME_CLIENT_SECRET</code>、<code>CHROME_REFRESH_TOKEN</code></li>
