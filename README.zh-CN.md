@@ -75,7 +75,7 @@ D1/R2 可用区域由 Wrangler 决定；不设置区域变量时由 Cloudflare �
 
 ## 部署方式三：GitHub Actions
 
-仓库只保留职责明确的工作流：无 Secret 的 CI、稳定 Cloudflare 部署、Tag Release、浏览器插件包和 GitHub Pages 文档。
+仓库只保留职责明确的工作流：无 Secret 的 CI、稳定 Cloudflare 部署、Tag Release、浏览器插件包、GitHub Pages 文档和手动管理员找回。
 
 1. 需要使用 **Sync fork** 持续更新时请选择 Fork；需要独立仓库时可从模板创建。仓库维护者需先在 **Settings → General → Template repository** 开启一次模板选项，GitHub 才会显示 **Use this template**。
 2. 按照带截图的 [Cloudflare 最小权限 Token 指引](https://tenfy.cn/img-hub/zh-CN.html#cloudflare-token)，选择 **创建自定义令牌（Create Custom Token）**，不要使用 Global API Key 或宽泛的内置模板。登录验证自动配置需要 **Turnstile Sites Write**。
@@ -177,6 +177,17 @@ npm run admin:reset -- --remote --database YOUR_D1_DATABASE_NAME
 输入新临时密码时终端不会回显。请确认命令输出中的 `administrators_reset` 为 `1`，且 `administrator_username` 为 `admin`；如果前者是 `0`，说明选中的数据库中没有管理员。恢复操作只替换管理员密码哈希，将其标记为临时密码，同时删除管理员全部 Session，并撤销所有有效的管理员 API Key。旧版管理员用户名会被安全地规范为 `admin`，原用户名仅作为公开 URL 别名保留。随后使用用户名 `admin` 和临时密码登录，并立即设置一个不同的正式密码。
 
 远程恢复会直接修改 D1，无法通过应用撤销。请反复确认数据库名称，并且只使用有权操作该部署的凭据。不要把临时密码放进命令行参数、GitHub Actions 输入、日志或代码仓库。
+
+### GitHub Actions：重置管理员密码
+
+手动触发的 **Reset administrator password** workflow 可以执行相同的远程 D1 恢复，并且不会把临时密码暴露为 workflow 输入：
+
+1. 打开 **Settings → Secrets and variables → Actions**，创建或更新 Repository Secret `IMG_HUB_ADMIN_RESET_PASSWORD`，值为 10–256 个字符的新临时密码。继续保留部署使用的 `CLOUDFLARE_API_TOKEN` 和 `CLOUDFLARE_ACCOUNT_ID`；Token 必须具备 D1 Edit 权限。
+2. 打开 **Actions → Reset administrator password → Run workflow**，填写已部署 D1 的准确数据库名称，并勾选重置确认框。
+3. 确认日志中的 `administrators_reset` 为 `1`，然后使用用户名 `admin` 和临时密码登录，并立即设置一个不同的正式密码。
+4. 重置成功后，从仓库中删除 `IMG_HUB_ADMIN_RESET_PASSWORD` Secret。
+
+该 workflow 只能手动触发。它会撤销管理员的全部 Session 和 API Key，并强制下次登录修改密码。不要复用旧密码，也不要把临时密码填进数据库名、Actions 输入、Issue 或日志。
 
 ## 管理端地址、内容审计与账户控制
 

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
@@ -84,4 +85,27 @@ test("administrator recovery rejects ambiguous command targets", async () => {
         }),
         /persist/i,
     );
+});
+
+test("GitHub administrator recovery is manual, confirmed, and keeps the password secret", async () => {
+    const workflow = await readFile(
+        new URL("../.github/workflows/reset-admin-password.yml", import.meta.url),
+        "utf8",
+    );
+
+    assert.match(workflow, /workflow_dispatch:/);
+    assert.match(workflow, /database_name:/);
+    assert.match(workflow, /confirm_reset:/);
+    assert.match(workflow, /type: boolean/);
+    assert.match(workflow, /contents: read/);
+    assert.match(workflow, /group: cloudflare-production/);
+    assert.match(workflow, /secrets\.CLOUDFLARE_API_TOKEN/);
+    assert.match(workflow, /secrets\.CLOUDFLARE_ACCOUNT_ID/);
+    assert.match(
+        workflow,
+        /IMG_HUB_NEW_ADMIN_PASSWORD:[^\n]*secrets\.IMG_HUB_ADMIN_RESET_PASSWORD/,
+    );
+    assert.match(workflow, /npm run admin:reset -- --remote --database "\$DATABASE_NAME"/);
+    assert.doesNotMatch(workflow, /\b(?:push|pull_request):/);
+    assert.doesNotMatch(workflow, /inputs\.[A-Za-z0-9_]*password/i);
 });

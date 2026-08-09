@@ -75,7 +75,7 @@ Valid D1/R2 location values are controlled by Wrangler. Omit placement variables
 
 ## Deployment option 3: GitHub Actions
 
-The repository contains focused workflows for secret-free CI, stable Cloudflare deployment, tagged releases, browser packages, and GitHub Pages documentation.
+The repository contains focused workflows for secret-free CI, stable Cloudflare deployment, tagged releases, browser packages, GitHub Pages documentation, and manual administrator recovery.
 
 1. Fork the repository when you want **Sync fork** updates, or create an independent repository from this Template repository. The maintainer must enable **Settings → General → Template repository** once for the **Use this template** button to appear.
 2. Follow the illustrated [least-privilege Cloudflare token guide](https://tenfy.cn/img-hub/#cloudflare-token): choose **Create Custom Token**, not the Global API Key or a broad built-in template. Automatic login protection requires **Turnstile Sites Write**.
@@ -177,6 +177,17 @@ npm run admin:reset -- --remote --database YOUR_D1_DATABASE_NAME
 The prompt hides the new temporary password. Verify the command reports `administrators_reset` as `1` and `administrator_username` as `admin`; `0` means the selected database has no administrator. The reset replaces only the administrator password hash, marks it temporary, deletes all administrator sessions, and revokes every active administrator API key. It also safely normalizes a legacy administrator username to `admin` and retains the former name only as a public-URL alias. Sign in as `admin` with the temporary password and choose a different permanent password immediately.
 
 Remote reset modifies D1 directly and cannot be undone through the application. Double-check the database name and use only credentials authorized for that deployment. Never put the temporary password in command-line arguments, GitHub Actions inputs, logs, or source control.
+
+### GitHub Actions: Reset administrator password
+
+The manual **Reset administrator password** workflow performs the same remote D1 recovery without exposing the temporary password as a workflow input:
+
+1. Under **Settings → Secrets and variables → Actions**, create or update the repository secret `IMG_HUB_ADMIN_RESET_PASSWORD` with a new temporary password of 10–256 characters. Keep the existing `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` deployment secrets configured; the token needs D1 Edit access.
+2. Open **Actions → Reset administrator password → Run workflow**. Enter the exact deployed D1 database name and select the reset confirmation checkbox.
+3. Confirm the log reports `administrators_reset` as `1`, then sign in as `admin` with the temporary password and set a different permanent password immediately.
+4. Delete `IMG_HUB_ADMIN_RESET_PASSWORD` from the repository after the successful reset.
+
+The workflow can only be started manually. It revokes all administrator sessions and API keys and forces the next login to change the password. Do not reuse an old password or place the temporary value in the database-name field, an Actions input, an issue, or a log.
 
 ## Administration address, content audit, and account access
 
