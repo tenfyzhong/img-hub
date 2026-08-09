@@ -12,7 +12,7 @@ function cacheCandidate(request) {
     if (request.method !== "GET") return null;
     const url = new URL(request.url);
     const versions = url.searchParams.getAll("v");
-    if (url.searchParams.size !== 1 || versions.length !== 1 || !/^[1-9]\d*$/.test(versions[0])) {
+    if (url.searchParams.size !== 1 || versions.length !== 1 || !/^\d+$/.test(versions[0])) {
         return null;
     }
     return {
@@ -52,9 +52,7 @@ export async function servePublicResource({
     context = null,
 }) {
     const candidate = cacheCandidate(request);
-    const resource = route.publicId
-        ? await repository.findPublicById(route.kind, route.publicId)
-        : await repository.findPublic(route.kind, route.username, route.directory, route.name);
+    const resource = await repository.findByPublicId(route.publicId);
     if (!resource) {
         return new Response("Not found", { status: 404 });
     }
@@ -77,13 +75,8 @@ export async function servePublicResource({
     const cacheable = Boolean(candidate && cache && candidate.version === resource.version);
     let renderedText = null;
     if (resource.kind === "text") {
-        let content = "";
-        if (request.method !== "HEAD") {
-            content = typeof object.text === "function"
-                ? await object.text()
-                : await new Response(object.body).text();
-        }
-        renderedText = renderTextContent(resource.textFormat || "plain", content);
+        const raw = await new Response(object.body).text();
+        renderedText = renderTextContent(resource.textFormat || "plain", raw);
     }
     const headers = contentHeaders(resource, cacheable, renderedText);
     if (object.httpEtag || object.etag) {

@@ -1,5 +1,7 @@
 import { AppError, requireActiveUser, requireAdministrator, requireOwner } from "./errors.js";
 import { buildObjectKey, buildPublicUrl, normalizeDirectory, sanitizeFileName } from "./paths.js";
+import { normalizePageOptions, paginated } from "./pagination.js";
+import { timestampResourceName } from "./resource-name.js";
 import { normalizeTextFormat, sanitizeRichText } from "./text-format.js";
 
 const MAX_FILE_BYTES = 100 * 1024 * 1024;
@@ -39,6 +41,15 @@ function validateSize(kind, size) {
     return normalized;
 }
 
+function normalizeContentMd5(value, required = false) {
+    const normalized = typeof value === "string" ? value.trim().toLowerCase() : "";
+    if (!normalized && !required) return null;
+    if (!/^[a-f0-9]{32}$/.test(normalized)) {
+        throw new AppError(400, "File MD5 is invalid", "invalid_file_md5");
+    }
+    return normalized;
+}
+
 function sanitizeStoredContent(kind, textFormat, content) {
     if (kind !== "text" || textFormat !== "rich") return content;
     const decoded = typeof content === "string" ? content : new TextDecoder().decode(content);
@@ -48,12 +59,12 @@ function sanitizeStoredContent(kind, textFormat, content) {
 function withUrl(resource, origin) {
     return {
         ...resource,
-        url: buildPublicUrl(origin, resource.kind, resource.publicId, resource.version),
+        url: buildPublicUrl(origin, resource.publicId, resource.version),
     };
 }
 
-export function createResourceService(repository, bucket) {
-    return {
+export function createResourceService(repository, bucket, now = () => new Date()) {
+    const service = {
         async create(user, input) {
             requireActiveUser(user);
             const kind = input.kind;
@@ -61,9 +72,14 @@ export function createResourceService(repository, bucket) {
                 throw new AppError(400, "Resource kind must be file or text", "invalid_kind");
             }
             const directory = normalizeDirectory(input.directory);
-            const name = sanitizeFileName(input.name);
             const textFormat = kind === "text" ? normalizeTextFormat(input.textFormat) : "plain";
+            const name = timestampResourceName(input.name, {
+                kind,
+                textFormat,
+                now: now(),
+            });
             const content = sanitizeStoredContent(kind, textFormat, input.content);
+            const contentMd5 = kind === "file" ? normalizeContentMd5(input.contentMd5) : null;
             const size = validateSize(
                 kind,
                 kind === "text" && textFormat === "rich" ? content.byteLength : input.size,
@@ -80,9 +96,10 @@ export function createResourceService(repository, bucket) {
                 directory,
                 name,
                 contentType: input.contentType || (kind === "text" ? "text/plain; charset=utf-8" : "application/octet-stream"),
+                contentMd5,
                 textFormat,
                 size,
-                version: 1,
+                version: now().getTime(),
             };
             try {
                 await repository.create(resource);
@@ -108,6 +125,26 @@ export function createResourceService(repository, bucket) {
                 throw error;
             }
             return withUrl(resource, input.origin);
+        },
+
+        async instantCopy(user, input) {
+            requireActiveUser(user);
+            const contentMd5 = normalizeContentMd5(input.contentMd5, true);
+            const size = validateSize("file", input.size);
+            const source = await repository.findReusableFileByMd5(user.id, contentMd5, size);
+            if (!source) return null;
+            const object = await bucket.get(source.objectKey);
+            if (!object?.body) return null;
+            return service.create(user, {
+                kind: "file",
+                directory: input.directory,
+                name: input.name,
+                contentType: source.contentType,
+                contentMd5,
+                content: object.body,
+                size: source.size,
+                origin: input.origin,
+            });
         },
 
         async list(user, kind) {
@@ -161,7 +198,7 @@ export function createResourceService(repository, bucket) {
             if (input.kind && input.kind !== resource.kind) {
                 throw new AppError(400, "Replacement must keep the existing resource type", "resource_type_mismatch");
             }
-            const version = Number(resource.version) + 1;
+            const version = now().getTime();
             const contentType = input.contentType || resource.contentType;
             const textFormat = resource.kind === "text"
                 ? normalizeTextFormat(input.textFormat || resource.textFormat)
@@ -177,6 +214,7 @@ export function createResourceService(repository, bucket) {
             });
             const updated = await repository.updateContent(resource.id, {
                 contentType,
+                contentMd5: resource.kind === "file" ? normalizeContentMd5(input.contentMd5) : null,
                 textFormat,
                 size,
                 version,
@@ -191,13 +229,24 @@ export function createResourceService(repository, bucket) {
             return resources.map((resource) => withUrl(resource, origin));
         },
 
+        async listForAuditPage(user, origin, input) {
+            requireAdministrator(user);
+            const options = normalizePageOptions(input);
+            const result = await repository.listForAuditPage(options);
+            return paginated(
+                result.items.map((resource) => withUrl(resource, origin)),
+                result.total,
+                options,
+            );
+        },
+
         async listHistory(user, origin) {
             requireActiveUser(user);
             const events = await repository.listEventsByOwner(user.id);
             return events.map((event) => ({
                 ...event,
                 resourceDeleted: event.action === "delete" || event.resourceDeleted,
-                url: buildPublicUrl(origin, event.kind, event.publicId, event.version),
+                url: buildPublicUrl(origin, event.publicId, event.version),
             }));
         },
 
@@ -212,4 +261,5 @@ export function createResourceService(repository, bucket) {
             return repository.block(resource.id, user.id, new Date().toISOString());
         },
     };
+    return service;
 }

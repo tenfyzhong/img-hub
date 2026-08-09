@@ -20,12 +20,17 @@ function runClient(arguments_, environment = {}) {
 }
 
 test("skill is concise, configured by environment, and has no placeholders", async () => {
-    const skill = await readFile(new URL("../skills/img-hub/SKILL.md", import.meta.url), "utf8");
+    const [skill, client] = await Promise.all([
+        readFile(new URL("../skills/img-hub/SKILL.md", import.meta.url), "utf8"),
+        readFile(scriptUrl, "utf8"),
+    ]);
 
     assert.match(skill, /IMG_HUB_URL/);
     assert.match(skill, /IMG_HUB_API_KEY/);
     assert.match(skill, /upload|replace|delete|list/);
     assert.doesNotMatch(skill, /TODO/);
+    assert.match(client, /hashlib\.md5/);
+    assert.match(client, /\/api\/files\/instant/);
 });
 
 test("skill client requires both configuration environment variables", async () => {

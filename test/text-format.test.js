@@ -26,6 +26,7 @@ test("markdown is rendered as safe HTML", () => {
     assert.match(rendered.body, /href="https:\/\/example\.com"/);
     assert.doesNotMatch(rendered.body, /<script/i);
     assert.match(rendered.contentSecurityPolicy, /default-src 'none'/);
+    assert.match(rendered.contentSecurityPolicy, /frame-ancestors 'self'/);
 });
 
 test("rich text preserves a small formatting allowlist without executable markup", () => {

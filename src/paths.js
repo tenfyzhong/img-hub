@@ -47,12 +47,9 @@ export function buildObjectKey(userId, kind, directory, name) {
     return ["users", userId, kind, safeDirectory, safeName].filter(Boolean).join("/");
 }
 
-export function buildPublicUrl(origin, kind, publicId, version) {
-    if (kind !== "file" && kind !== "text") {
-        throw new Error("Invalid resource kind");
-    }
+export function buildPublicUrl(origin, publicId, version) {
     if (!/^pub_[a-f0-9]{32}$/.test(publicId)) {
         throw new Error("Invalid public identifier");
     }
-    return `${origin.replace(/\/$/, "")}/${kind}/${publicId}?v=${Number(version)}`;
+    return `${origin.replace(/\/$/, "")}/${publicId}?v=${Number(version)}`;
 }

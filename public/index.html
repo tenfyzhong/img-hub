@@ -33,10 +33,6 @@
         <p id="site-tagline" class="eyebrow">Your files. Stable links.</p>
         <h1 id="site-welcome-title">A small cloud shelf for the things you share.</h1>
         <p id="site-welcome-description">Private accounts, isolated storage, and links that survive content replacement.</p>
-        <div class="path-preview">
-          <span>/file/pub_7b62…</span>
-          <strong>?v=4</strong>
-        </div>
       </div>
 
       <div class="auth-card">
@@ -108,7 +104,12 @@
           <nav data-i18n-aria-label="nav.accountAria" aria-label="Account navigation">
             <button class="nav-button" data-view="security" type="button"><span>⌁</span><span class="nav-label" data-i18n="nav.security">Security</span></button>
             <button class="nav-button" data-view="api-keys" type="button"><span>⚿</span><span class="nav-label" data-i18n="nav.apiKeys">API keys</span></button>
-            <button id="admin-nav" class="nav-button" data-view="admin" type="button" hidden><span>◇</span><span class="nav-label" data-i18n="nav.administration">Administration</span></button>
+          </nav>
+          <p class="sidebar-label" data-admin-only data-i18n="nav.administration" hidden>Administration</p>
+          <nav data-admin-only data-i18n-aria-label="nav.adminAria" aria-label="Administration navigation" hidden>
+            <button class="nav-button" data-view="audit" type="button"><span>◎</span><span class="nav-label" data-i18n="nav.audit">Content audit</span></button>
+            <button class="nav-button" data-view="users" type="button"><span>♙</span><span class="nav-label" data-i18n="nav.users">User management</span></button>
+            <button class="nav-button" data-view="admin" type="button"><span>◇</span><span class="nav-label" data-i18n="nav.adminSettings">Site settings</span></button>
           </nav>
         </div>
         <div class="profile-card">
@@ -121,7 +122,7 @@
       <div class="workspace">
         <section id="view-upload" class="view">
           <div class="view-heading">
-            <div><p class="eyebrow" data-i18n="upload.eyebrow">Publish</p><h1 data-i18n="upload.title">Upload files, publish text, or import a remote file</h1></div>
+            <div><p class="eyebrow" data-i18n="upload.eyebrow">Publish</p><h1 data-i18n="upload.title">Upload &amp; publish</h1></div>
           </div>
           <div id="upload-mode-switch" class="mode-switch" role="tablist" data-i18n-aria-label="upload.modeAria" aria-label="Publish type">
             <button id="upload-file-tab" class="mode-option active" type="button" role="tab" aria-selected="true" aria-controls="upload-file-panel"><span>◫</span><span data-i18n="upload.fileTab">Upload files</span></button>
@@ -151,12 +152,11 @@
             <div id="upload-text-panel" class="mode-panel" role="tabpanel" aria-labelledby="upload-text-tab" hidden>
               <form id="text-form" class="editor-panel">
                 <div class="form-row">
-                  <label><span data-i18n="texts.name">File name</span><input name="name" placeholder="notes.txt" required></label>
+                  <label><span data-i18n="texts.name">File name</span><input name="name" data-i18n-placeholder="texts.namePlaceholder" placeholder="Optional; generated automatically"></label>
                   <label><span data-i18n="common.optionalDirectory">Optional subdirectory</span><input name="directory" placeholder="snippets/css"></label>
                 </div>
                 <label><span data-i18n="texts.format">Format</span>
                   <select id="text-format" name="format">
-                    <option value="plain" data-i18n="texts.plain">Plain text</option>
                     <option value="markdown" data-i18n="texts.markdown">Markdown</option>
                     <option value="rich" data-i18n="texts.rich">Rich text</option>
                   </select>
@@ -193,6 +193,7 @@
               <button class="secondary" type="button" data-share-copy="markdown" data-i18n="resource.copyMarkdown">Copy Markdown</button>
               <button class="secondary" type="button" data-share-copy="html" data-i18n="resource.copyHtml">Copy HTML</button>
             </div>
+            <button id="dismiss-upload-share" class="share-result-close" type="button" data-i18n-title="common.close" data-i18n-aria-label="common.close" title="Close" aria-label="Close">×</button>
           </div>
         </section>
 
@@ -265,37 +266,43 @@
           </div>
         </section>
 
+        <section id="view-audit" class="view" hidden>
+          <div class="view-heading"><div><p class="eyebrow" data-i18n="nav.administration">Administration</p><h1 data-i18n="audit.title">Content audit</h1></div></div>
+          <div class="surface management-surface">
+            <p class="muted" data-i18n="audit.description">Review every active or blocked public link and its uploader. Blocking permanently deletes the R2 source object while retaining this audit record.</p>
+            <form id="audit-search-form" class="management-toolbar">
+              <label><span data-i18n="search.auditLabel">Search content</span><input name="q" type="search" maxlength="100" data-i18n-placeholder="search.auditPlaceholder" placeholder="File name, link, uploader, or directory"></label>
+              <div class="toolbar-actions"><button class="primary" type="submit" data-i18n="search.submit">Search</button><button class="secondary" id="audit-refresh" type="button" data-i18n="common.refresh">Refresh</button></div>
+            </form>
+            <div id="audit-list" class="audit-list"></div>
+            <div id="audit-pagination" class="pagination">
+              <span id="audit-page-summary"></span>
+              <div><button id="audit-page-previous" class="secondary" type="button" data-i18n="pagination.previous">Previous</button><button id="audit-page-next" class="secondary" type="button" data-i18n="pagination.next">Next</button></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="view-users" class="view" hidden>
+          <div class="view-heading">
+            <div><p class="eyebrow" data-i18n="nav.administration">Administration</p><h1 data-i18n="user.managementTitle">User management</h1></div>
+            <button id="open-user-create" class="primary" type="button" data-i18n="admin.createUser">Create user</button>
+          </div>
+          <div class="surface management-surface">
+            <form id="user-search-form" class="management-toolbar">
+              <label><span data-i18n="search.userLabel">Search users</span><input name="q" type="search" maxlength="100" data-i18n-placeholder="search.userPlaceholder" placeholder="Username"></label>
+              <div class="toolbar-actions"><button class="primary" type="submit" data-i18n="search.submit">Search</button><button class="secondary" id="user-refresh" type="button" data-i18n="common.refresh">Refresh</button></div>
+            </form>
+            <div id="user-list" class="user-list"></div>
+            <div id="user-pagination" class="pagination">
+              <span id="user-page-summary"></span>
+              <div><button id="user-page-previous" class="secondary" type="button" data-i18n="pagination.previous">Previous</button><button id="user-page-next" class="secondary" type="button" data-i18n="pagination.next">Next</button></div>
+            </div>
+          </div>
+        </section>
+
         <section id="view-admin" class="view" hidden>
-          <div class="view-heading"><div><p class="eyebrow" data-i18n="nav.administration">Administration</p><h1 data-i18n="admin.title">People, moderation, storage &amp; appearance</h1></div></div>
+          <div class="view-heading"><div><p class="eyebrow" data-i18n="nav.administration">Administration</p><h1 data-i18n="admin.title">Site administration</h1></div></div>
           <div class="admin-columns">
-            <div class="surface audit-card">
-              <div class="section-title audit-heading"><h2 data-i18n="audit.title">Content audit</h2><button class="text-button" id="audit-refresh" type="button" data-i18n="common.refresh">Refresh</button></div>
-              <p class="muted" data-i18n="audit.description">Review every active or blocked public link and its uploader. Blocking permanently deletes the R2 source object while retaining this audit record.</p>
-              <div id="audit-list" class="audit-list"></div>
-            </div>
-            <div class="surface">
-              <h2 data-i18n="admin.createUser">Create user</h2>
-              <p class="muted" data-i18n="admin.createUserDescription">The assigned password must be changed on first login.</p>
-              <form id="user-form" class="stack-form">
-                <label><span data-i18n="common.username">Username</span><input name="username" minlength="3" maxlength="32" required></label>
-                <label><span data-i18n="password.temporary">Temporary password</span><span class="password-field"><input name="password" type="password" minlength="10" required><button type="button" data-password-toggle data-i18n-aria-label="password.toggle" aria-label="Show or hide password"></button></span></label>
-                <label><span data-i18n="password.confirm">Confirm password</span><span class="password-field"><input name="confirmPassword" type="password" minlength="10" required><button type="button" data-password-toggle data-i18n-aria-label="password.toggle" aria-label="Show or hide password"></button></span></label>
-                <div class="password-tools"><button id="generate-user-password" class="secondary" type="button" data-i18n="password.generate">Generate password</button><button id="copy-user-password" class="secondary" type="button" data-i18n="password.copy">Copy password</button></div>
-                <button class="primary" type="submit" data-i18n="admin.createUserSubmit">Create user</button>
-              </form>
-              <div id="user-list" class="user-list"></div>
-            </div>
-            <div class="surface">
-              <h2 data-i18n="lifecycle.title">R2 retention</h2>
-              <p class="muted" data-i18n="lifecycle.description">Sets the default object deletion rule while preserving unrelated lifecycle rules. The API token is used once and never stored.</p>
-              <form id="lifecycle-form" class="stack-form">
-                <label><span data-i18n="lifecycle.accountId">Cloudflare account ID</span><input name="accountId" autocomplete="off" required></label>
-                <label><span data-i18n="lifecycle.bucket">R2 bucket name</span><input name="bucketName" autocomplete="off" required></label>
-                <label><span data-i18n="lifecycle.token">API token</span><span class="password-field"><input name="apiToken" type="password" autocomplete="off" required><button type="button" data-password-toggle data-i18n-aria-label="password.toggle" aria-label="Show or hide password"></button></span></label>
-                <label><span data-i18n="lifecycle.days">Delete after days</span><input name="retentionDays" type="number" min="1" max="3650" value="91" required></label>
-                <button class="primary" type="submit" data-i18n="lifecycle.submit">Apply lifecycle rule</button>
-              </form>
-            </div>
             <div class="surface site-settings-card">
               <h2 data-i18n="appearance.title">Site appearance</h2>
               <p class="muted" data-i18n="appearance.description">Customize the public title and welcome copy. Values are shared across languages and rendered as plain text.</p>
@@ -307,11 +314,37 @@
                 <button class="primary" type="submit" data-i18n="appearance.submit">Save site appearance</button>
               </form>
             </div>
+            <div class="surface retention-card">
+              <h2 data-i18n="retention.title">R2 retention</h2>
+              <p class="muted" data-i18n="retention.description">The deployed backend removes objects older than this value during its daily maintenance run. No Cloudflare credentials are required here.</p>
+              <form id="retention-form" class="stack-form">
+                <label><span data-i18n="retention.days">Retention days</span><input name="retentionDays" type="number" min="1" max="3650" step="1" required></label>
+                <p class="retention-warning" data-i18n="retention.warning">Reducing this value can permanently delete older R2 objects during the next maintenance run.</p>
+                <button class="primary" type="submit" data-i18n="retention.submit">Save retention policy</button>
+              </form>
+            </div>
           </div>
         </section>
       </div>
     </section>
   </main>
+
+  <dialog id="user-create-drawer" class="drawer">
+    <div class="drawer-panel">
+      <div class="drawer-heading">
+        <div><p class="eyebrow" data-i18n="user.managementTitle">User management</p><h2 data-i18n="admin.createUser">Create user</h2></div>
+        <button id="close-user-create" class="icon-button" type="button" data-i18n-title="common.close" data-i18n-aria-label="common.close" title="Close" aria-label="Close">×</button>
+      </div>
+      <p class="muted" data-i18n="admin.createUserDescription">The assigned password must be changed on first login.</p>
+      <form id="user-form" class="stack-form">
+        <label><span data-i18n="common.username">Username</span><input name="username" minlength="3" maxlength="32" required></label>
+        <label><span data-i18n="password.temporary">Temporary password</span><span class="password-field"><input name="password" type="password" minlength="10" required><button type="button" data-password-toggle data-i18n-aria-label="password.toggle" aria-label="Show or hide password"></button></span></label>
+        <label><span data-i18n="password.confirm">Confirm password</span><span class="password-field"><input name="confirmPassword" type="password" minlength="10" required><button type="button" data-password-toggle data-i18n-aria-label="password.toggle" aria-label="Show or hide password"></button></span></label>
+        <div class="password-tools"><button id="generate-user-password" class="secondary" type="button" data-i18n="password.generate">Generate password</button><button id="copy-user-password" class="secondary" type="button" data-i18n="password.copy">Copy password</button></div>
+        <button class="primary" type="submit" data-i18n="admin.createUserSubmit">Create user</button>
+      </form>
+    </div>
+  </dialog>
 
   <dialog id="password-reset-dialog" class="password-dialog">
     <form id="reset-password-form" class="stack-form">

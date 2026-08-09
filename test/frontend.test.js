@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-test("the web app exposes setup, login, user management, replacement, and lifecycle controls", async () => {
+test("the web app exposes setup, login, administration, and resource controls", async () => {
     const [html, javascript] = await Promise.all([
         readFile(new URL("../public/index.html", import.meta.url), "utf8"),
         readFile(new URL("../public/app.js", import.meta.url), "utf8"),
@@ -15,7 +15,6 @@ test("the web app exposes setup, login, user management, replacement, and lifecy
         "api-key-form",
         "site-settings-form",
         "user-form",
-        "lifecycle-form",
         "audit-list",
         "file-form",
         "text-form",
@@ -47,6 +46,103 @@ test("the web app exposes setup, login, user management, replacement, and lifecy
     );
     const setupForm = html.match(/<form id="setup-form"[\s\S]*?<\/form>/)?.[0] || "";
     assert.doesNotMatch(setupForm, /name="username"/);
+});
+
+test("authentication pages do not expose a public resource path example", async () => {
+    const [html, css] = await Promise.all([
+        readFile(new URL("../public/index.html", import.meta.url), "utf8"),
+        readFile(new URL("../public/styles.css", import.meta.url), "utf8"),
+    ]);
+    const authentication = html.match(/<section id="auth-shell"[\s\S]*?<section id="password-gate"/)?.[0] || "";
+
+    assert.doesNotMatch(authentication, /path-preview|\/pub_|\?v=/);
+    assert.doesNotMatch(css, /\.path-preview/);
+});
+
+test("publish results can be dismissed and clear when navigating menus or upload tabs", async () => {
+    const [html, javascript] = await Promise.all([
+        readFile(new URL("../public/index.html", import.meta.url), "utf8"),
+        readFile(new URL("../public/app.js", import.meta.url), "utf8"),
+    ]);
+    const shareResult = html.match(/<div id="upload-share-result"[\s\S]*?<\/div>\s*<\/section>/)?.[0] || "";
+
+    assert.match(shareResult, /id="dismiss-upload-share"[^>]*class="share-result-close"/);
+    assert.match(shareResult, /data-i18n-title="common\.close"/);
+    assert.match(shareResult, /data-i18n-aria-label="common\.close"/);
+    assert.match(shareResult, />×<\/button>/);
+    assert.doesNotMatch(shareResult, /data-i18n="resource\.dismissResult"|>Dismiss result<|>删除结果</);
+    assert.match(javascript, /function clearShareResult\(\)[\s\S]*?state\.lastShareFormats = null;[\s\S]*?show\(byId\("upload-share-result"\), false\);/);
+    assert.match(javascript, /byId\("dismiss-upload-share"\)\.addEventListener\("click", clearShareResult\);/);
+    assert.match(javascript, /function switchView\(name\) \{\s*clearShareResult\(\);/);
+    assert.match(javascript, /function selectUploadMode\(mode\) \{\s*clearShareResult\(\);/);
+});
+
+test("content audit and user management use separate searchable paginated menus", async () => {
+    const [html, javascript, css] = await Promise.all([
+        readFile(new URL("../public/index.html", import.meta.url), "utf8"),
+        readFile(new URL("../public/app.js", import.meta.url), "utf8"),
+        readFile(new URL("../public/styles.css", import.meta.url), "utf8"),
+    ]);
+
+    for (const view of ["audit", "users", "admin"]) {
+        assert.match(html, new RegExp(`data-view=["']${view}["']`));
+        assert.match(html, new RegExp(`id=["']view-${view}["']`));
+    }
+    const auditView = html.match(/<section id="view-audit"[\s\S]*?<section id="view-users"/)?.[0] || "";
+    const usersView = html.match(/<section id="view-users"[\s\S]*?<section id="view-admin"/)?.[0] || "";
+    const adminView = html.match(/<section id="view-admin"[\s\S]*?<\/section>\s*<\/div>/)?.[0] || "";
+    assert.match(auditView, /id="audit-search-form"/);
+    assert.match(auditView, /id="audit-pagination"/);
+    assert.doesNotMatch(auditView, /id="user-form"/);
+    assert.match(usersView, /id="user-search-form"/);
+    assert.match(usersView, /id="user-pagination"/);
+    assert.match(usersView, /id="open-user-create"/);
+    assert.doesNotMatch(adminView, /id="audit-list"|id="user-list"/);
+    assert.match(javascript, /URLSearchParams/);
+    assert.match(javascript, /loadAudit/);
+    assert.match(javascript, /loadUsers/);
+    assert.match(css, /\.management-toolbar/);
+    assert.match(css, /\.pagination/);
+});
+
+test("primary account views fill the row and user creation opens in a right drawer", async () => {
+    const [html, javascript, css] = await Promise.all([
+        readFile(new URL("../public/index.html", import.meta.url), "utf8"),
+        readFile(new URL("../public/app.js", import.meta.url), "utf8"),
+        readFile(new URL("../public/styles.css", import.meta.url), "utf8"),
+    ]);
+
+    assert.match(css, /\.mode-switch\s*\{[^}]*width:\s*100%/s);
+    assert.match(css, /\.security-page-card\s*\{[^}]*width:\s*100%/s);
+    assert.match(css, /\.api-keys-card\s*\{[^}]*width:\s*100%/s);
+    assert.doesNotMatch(css, /\.api-keys-card[^}]*max-width:\s*520px/s);
+
+    const usersView = html.match(/<section id="view-users"[\s\S]*?<section id="view-admin"/)?.[0] || "";
+    const drawer = html.match(/<dialog id="user-create-drawer"[\s\S]*?<\/dialog>/)?.[0] || "";
+    assert.match(usersView, /id="open-user-create"/);
+    assert.match(usersView, /id="user-search-form"/);
+    assert.doesNotMatch(usersView, /id="user-form"/);
+    assert.match(drawer, /id="user-form"/);
+    assert.match(drawer, /id="close-user-create"/);
+    assert.match(css, /\.drawer\s*\{/);
+    assert.match(css, /\.drawer\[open\]/);
+    assert.match(javascript, /user-create-drawer/);
+    assert.match(javascript, /open-user-create/);
+    assert.match(javascript, /close-user-create/);
+});
+
+test("R2 retention is configured by the deployed backend without browser credential fields", async () => {
+    const [html, javascript, worker] = await Promise.all([
+        readFile(new URL("../public/index.html", import.meta.url), "utf8"),
+        readFile(new URL("../public/app.js", import.meta.url), "utf8"),
+        readFile(new URL("../src/index.js", import.meta.url), "utf8"),
+    ]);
+
+    assert.doesNotMatch(html, /name="(?:accountId|bucketName|apiToken)"/);
+    assert.match(html, /id="retention-form"/);
+    assert.match(html, /name="retentionDays"[^>]*type="number"/);
+    assert.match(javascript, /\/api\/admin\/retention/);
+    assert.match(worker, /async scheduled\(/);
 });
 
 test("password, upload, file manager, rich text, and history interactions are present", async () => {
@@ -111,10 +207,15 @@ test("password visibility icons match the state and API keys have their own menu
     assert.match(accountNavigation, /data-view="security"/);
     assert.match(accountNavigation, /data-view="api-keys"/);
     assert.ok(accountNavigation.indexOf('data-view="security"') < accountNavigation.indexOf('data-view="api-keys"'));
-    assert.ok(accountNavigation.indexOf('data-view="api-keys"') < accountNavigation.indexOf('data-view="admin"'));
+    assert.doesNotMatch(accountNavigation, /data-view="(?:audit|users|admin)"/);
+
+    const adminNavigation = html.match(/<nav data-admin-only[\s\S]*?<\/nav>/)?.[0] || "";
+    assert.match(adminNavigation, /data-view="audit"/);
+    assert.match(adminNavigation, /data-view="users"/);
+    assert.match(adminNavigation, /data-view="admin"/);
 
     const securityView = html.match(/<section id="view-security"[\s\S]*?<section id="view-api-keys"/)?.[0] || "";
-    const apiKeysView = html.match(/<section id="view-api-keys"[\s\S]*?<section id="view-admin"/)?.[0] || "";
+    const apiKeysView = html.match(/<section id="view-api-keys"[\s\S]*?<section id="view-audit"/)?.[0] || "";
     assert.match(securityView, /id="password-form"/);
     assert.doesNotMatch(securityView, /id="api-key-form"/);
     assert.match(apiKeysView, /id="api-key-form"/);
@@ -186,6 +287,43 @@ test("upload uses three equal panels and resource management is unified", async 
     assert.match(css, /\.upload-mode-stage\s*\{[^}]*height:\s*100%/s);
     assert.match(css, /\.upload-mode-stage\s*>\s*\.mode-panel\s*\{[^}]*height:\s*100%[^}]*overflow:\s*hidden/s);
     assert.match(css, /\.drop-zone\s*\{[^}]*min-height:\s*(?:2\d\d|[3-9]\d\d)px/s);
+});
+
+test("text publishing omits plain text and every manager preview stays inside its card", async () => {
+    const [html, javascript, css] = await Promise.all([
+        readFile(new URL("../public/index.html", import.meta.url), "utf8"),
+        readFile(new URL("../public/app.js", import.meta.url), "utf8"),
+        readFile(new URL("../public/styles.css", import.meta.url), "utf8"),
+    ]);
+
+    const textPanel = html.match(/<div id="upload-text-panel"[\s\S]*?<div id="upload-remote-panel"/)?.[0] || "";
+    assert.doesNotMatch(textPanel, /<option value="plain"/);
+    assert.match(textPanel, /<option value="markdown"/);
+    assert.match(textPanel, /<option value="rich"/);
+    assert.match(javascript, /resource\.kind === "text"[\s\S]*?document\.createElement\("iframe"\)/);
+    assert.match(javascript, /preview\.className = "resource-preview"/);
+    assert.match(css, /\.resource-card\s*\{[^}]*overflow:\s*hidden/s);
+    assert.match(css, /\.resource-icon\s*\{[^}]*overflow:\s*hidden/s);
+    assert.match(css, /\.resource-icon img\s*\{[^}]*object-fit:\s*contain/s);
+    assert.match(css, /\.resource-icon iframe\s*\{[^}]*max-width:\s*100%/s);
+});
+
+test("publishing uses optional generated text names, share results, MD5 instant upload, and session refresh", async () => {
+    const [html, javascript] = await Promise.all([
+        readFile(new URL("../public/index.html", import.meta.url), "utf8"),
+        readFile(new URL("../public/app.js", import.meta.url), "utf8"),
+    ]);
+
+    const textPanel = html.match(/<div id="upload-text-panel"[\s\S]*?<div id="upload-remote-panel"/)?.[0] || "";
+    const nameInput = textPanel.match(/<input name="name"[^>]*>/)?.[0] || "";
+    assert.doesNotMatch(nameInput, /\srequired(?:\s|>)/);
+    assert.match(nameInput, /data-i18n-placeholder="texts\.namePlaceholder"/);
+    assert.match(javascript, /md5File/);
+    assert.match(javascript, /\/api\/files\/instant/);
+    assert.match(javascript, /files\.checkingDuplicate/);
+    assert.match(javascript, /const result = await api\(editing[\s\S]*?showShareResult\(result\.resource\)/);
+    assert.match(javascript, /\/api\/auth\/refresh/);
+    assert.match(javascript, /response\.status === 401[\s\S]*?refreshSession/);
 });
 
 test("the site uses its own CSS-generated background and brand", async () => {

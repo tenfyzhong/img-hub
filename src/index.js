@@ -2,14 +2,14 @@ import { createAuthService } from "./auth-service.js";
 import { createApiKeyService } from "./api-key-service.js";
 import { assertPasswordConfirmation, hashPassword } from "./auth.js";
 import { createRepositories } from "./database.js";
-import { AppError, requireActiveUser, requireAdministrator } from "./errors.js";
+import { AppError, requireActiveUser } from "./errors.js";
 import { assertSameOrigin, json, progressStream, readJson, routePublicResource } from "./http.js";
-import { configureLifecycle } from "./lifecycle.js";
 import { createLoginProtection } from "./login-protection.js";
-import { buildPublicUrl, normalizeDirectory, sanitizeFileName } from "./paths.js";
+import { buildPublicUrl } from "./paths.js";
 import { servePublicResource } from "./public-resource.js";
 import { fetchRemoteFile } from "./remote-file.js";
 import { createResourceService } from "./resource-service.js";
+import { createRetentionService } from "./retention-service.js";
 import { ensureSchema } from "./schema.js";
 import { createSiteSettingsService } from "./site-settings-service.js";
 import { ADMIN_USERNAME, createUserService } from "./user-service.js";
@@ -37,7 +37,15 @@ function isSecure(request) {
 function resourceWithUrl(resource, origin) {
     return {
         ...resource,
-        url: buildPublicUrl(origin, resource.kind, resource.publicId, resource.version),
+        url: buildPublicUrl(origin, resource.publicId, resource.version),
+    };
+}
+
+function pageOptions(url) {
+    return {
+        page: url.searchParams.get("page"),
+        pageSize: url.searchParams.get("pageSize"),
+        query: url.searchParams.get("q") || "",
     };
 }
 
@@ -56,6 +64,7 @@ async function readFileUpload(request) {
         directory: String(form.get("directory") || ""),
         content: await file.arrayBuffer(),
         contentType: file.type || "application/octet-stream",
+        contentMd5: String(form.get("md5") || ""),
         size: file.size,
     };
 }
@@ -82,13 +91,18 @@ async function handleApi(request, env, repositories) {
     const url = new URL(request.url);
     const path = url.pathname;
     const secure = isSecure(request);
-    const auth = createAuthService(repositories.users, repositories.sessions);
+    const auth = createAuthService(
+        repositories.users,
+        repositories.sessions,
+        repositories.refreshSessions,
+    );
     const loginProtection = createLoginProtection(repositories.loginChallenges, {
         siteKey: env.TURNSTILE_SITE_KEY,
         secretKey: env.TURNSTILE_SECRET_KEY,
     });
     const apiKeyService = createApiKeyService(repositories.apiKeys);
     const siteSettingsService = createSiteSettingsService(repositories.settings);
+    const retentionService = createRetentionService(repositories.settings, env.BUCKET);
     const userService = createUserService(repositories.users);
     const resourceService = createResourceService(repositories.resources, env.BUCKET);
 
@@ -127,7 +141,7 @@ async function handleApi(request, env, repositories) {
             throw error;
         }
         const login = await auth.login(ADMIN_USERNAME, body.password, secure);
-        return json({ user: publicUser(login.user) }, 201, { "Set-Cookie": login.cookie });
+        return json({ user: publicUser(login.user) }, 201, { "Set-Cookie": login.cookies });
     }
     if (request.method === "POST" && path === "/api/auth/login") {
         const body = await readJson(request);
@@ -138,7 +152,7 @@ async function handleApi(request, env, repositories) {
         );
         let login;
         try {
-            login = await auth.login(body.username, body.password, secure);
+            login = await auth.login(body.username, body.password, secure, body.client !== "extension");
         } catch (error) {
             if (error instanceof AppError && error.code === "invalid_credentials") {
                 const result = await loginProtection.recordFailure(attempt);
@@ -152,11 +166,15 @@ async function handleApi(request, env, repositories) {
         if (body.client === "extension") {
             return json({ user: publicUser(login.user), accessToken: login.token });
         }
-        return json({ user: publicUser(login.user) }, 200, { "Set-Cookie": login.cookie });
+        return json({ user: publicUser(login.user) }, 200, { "Set-Cookie": login.cookies });
+    }
+    if (request.method === "POST" && path === "/api/auth/refresh") {
+        const refreshed = await auth.refresh(request, secure);
+        return json({ user: publicUser(refreshed.user) }, 200, { "Set-Cookie": refreshed.cookies });
     }
     if (request.method === "POST" && path === "/api/auth/logout") {
-        const cookie = await auth.logout(request, secure);
-        return json({ ok: true }, 200, { "Set-Cookie": cookie });
+        const cookies = await auth.logout(request, secure);
+        return json({ ok: true }, 200, { "Set-Cookie": cookies });
     }
 
     const session = await requirePrincipal(auth, apiKeyService, request);
@@ -216,11 +234,23 @@ async function handleApi(request, env, repositories) {
             directory: upload.directory,
             name: upload.file.name,
             contentType: upload.contentType,
+            contentMd5: upload.contentMd5,
             content: upload.content,
             size: upload.size,
             origin: url.origin,
         });
         return json({ resource }, 201);
+    }
+    if (request.method === "POST" && path === "/api/files/instant") {
+        const body = await readJson(request);
+        const resource = await resourceService.instantCopy(session.user, {
+            directory: body.directory,
+            name: body.name,
+            contentMd5: body.md5,
+            size: body.size,
+            origin: url.origin,
+        });
+        return json({ instant: Boolean(resource), resource });
     }
     if (request.method === "POST" && path === "/api/files/import") {
         const body = await readJson(request);
@@ -262,13 +292,12 @@ async function handleApi(request, env, repositories) {
     if (request.method === "POST" && path === "/api/texts") {
         const body = await readJson(request);
         const content = typeof body.content === "string" ? body.content : "";
-        const name = sanitizeFileName(body.name);
         const textFormat = normalizeTextFormat(body.format);
         const encoded = new TextEncoder().encode(content);
         const resource = await resourceService.create(session.user, {
             kind: "text",
-            directory: normalizeDirectory(body.directory),
-            name,
+            directory: body.directory,
+            name: body.name,
             contentType: contentTypeForText(textFormat),
             textFormat,
             content: encoded,
@@ -294,6 +323,7 @@ async function handleApi(request, env, repositories) {
                 kind: "file",
                 content: upload.content,
                 contentType: upload.contentType,
+                contentMd5: upload.contentMd5,
                 size: upload.size,
                 origin: url.origin,
             };
@@ -324,7 +354,12 @@ async function handleApi(request, env, repositories) {
         if (session.authType !== "session") {
             throw new AppError(403, "A browser login session is required", "session_required");
         }
-        return json({ resources: await resourceService.listForAudit(session.user, url.origin) });
+        const result = await resourceService.listForAuditPage(
+            session.user,
+            url.origin,
+            pageOptions(url),
+        );
+        return json({ resources: result.items, pagination: result.pagination });
     }
     const blockResourceMatch = path.match(/^\/api\/admin\/resources\/([^/]+)\/block$/);
     if (request.method === "POST" && blockResourceMatch) {
@@ -335,8 +370,11 @@ async function handleApi(request, env, repositories) {
         return json({ resource });
     }
     if (request.method === "GET" && path === "/api/admin/users") {
-        const users = await userService.listUsers(session.user);
-        return json({ users: users.map(publicUser) });
+        const result = await userService.listUsersPage(session.user, pageOptions(url));
+        return json({
+            users: result.items.map(publicUser),
+            pagination: result.pagination,
+        });
     }
     if (request.method === "POST" && path === "/api/admin/users") {
         const body = await readJson(request);
@@ -368,36 +406,21 @@ async function handleApi(request, env, repositories) {
         }
         return json({ user: publicUser(user) });
     }
-    if (request.method === "GET" && path === "/api/admin/lifecycle") {
-        requireAdministrator(session.user);
-        return json({
-            accountId: await repositories.settings.get("r2_account_id"),
-            bucketName: await repositories.settings.get("r2_bucket_name"),
-            retentionDays: Number(await repositories.settings.get("r2_retention_days") || 91),
-        });
-    }
-    if (request.method === "PUT" && path === "/api/admin/lifecycle") {
-        requireAdministrator(session.user);
-        const body = await readJson(request);
-        let result;
-        try {
-            result = await configureLifecycle({
-                accountId: body.accountId,
-                bucketName: body.bucketName,
-                apiToken: body.apiToken,
-                retentionDays: body.retentionDays ?? 91,
-            });
-        } catch (error) {
-            throw new AppError(502, `Cloudflare lifecycle update failed: ${error.message}`, "lifecycle_update_failed");
-        }
-        await repositories.settings.set("r2_account_id", body.accountId);
-        await repositories.settings.set("r2_bucket_name", body.bucketName);
-        await repositories.settings.set("r2_retention_days", result.retentionDays);
-        return json(result);
-    }
     if (request.method === "PUT" && path === "/api/admin/site-settings") {
         const body = await readJson(request);
         return json({ site: await siteSettingsService.update(session.user, body) });
+    }
+    if (["GET", "PUT"].includes(request.method) && path === "/api/admin/retention") {
+        if (session.authType !== "session") {
+            throw new AppError(403, "A browser login session is required", "session_required");
+        }
+        if (request.method === "GET") {
+            return json({ retention: await retentionService.get(session.user) });
+        }
+        const body = await readJson(request);
+        return json({
+            retention: await retentionService.update(session.user, body.retentionDays),
+        });
     }
     throw new AppError(404, "API route not found", "not_found");
 }
@@ -405,14 +428,15 @@ async function handleApi(request, env, repositories) {
 async function handleRequest(request, env, context) {
     const url = new URL(request.url);
     const needsData = url.pathname.startsWith("/api/")
-        || url.pathname.startsWith("/file/")
-        || url.pathname.startsWith("/text/");
+        || (url.pathname.split("/").filter(Boolean).length === 1
+            && /^pub_[a-f0-9]{32}$/.test(url.pathname.split("/").filter(Boolean)[0] || ""));
     if (!needsData) {
         return env.ASSETS.fetch(request);
     }
     await ensureSchema(env.DB);
     const repositories = createRepositories(env.DB);
     const publicRoute = routePublicResource(url.pathname);
+
     if (publicRoute && ["GET", "HEAD"].includes(request.method)) {
         return servePublicResource({
             request,
@@ -440,5 +464,13 @@ export default {
             console.error(error);
             return json({ error: { code: "internal_error", message: "Internal server error" } }, 500);
         }
+    },
+
+    async scheduled(_controller, env) {
+        await ensureSchema(env.DB);
+        const repositories = createRepositories(env.DB);
+        const retention = createRetentionService(repositories.settings, env.BUCKET);
+        const result = await retention.run();
+        console.log(`Retention scanned ${result.scanned} objects and deleted ${result.deleted}`);
     },
 };

@@ -40,6 +40,13 @@ function createMemoryUsers() {
             async list() {
                 return users;
             },
+            async listPage(options) {
+                const matched = users.filter((user) => user.username.includes(options.query));
+                return {
+                    items: matched.slice(options.offset, options.offset + options.pageSize),
+                    total: matched.length,
+                };
+            },
         },
     };
 }
@@ -122,4 +129,26 @@ test("the administrator account cannot be disabled", async () => {
     const service = createUserService(memory.repository);
 
     await assert.rejects(service.setDisabled(memory.users[0], "admin", true), /administrator account/i);
+});
+
+test("administrator user management is searched and paginated", async () => {
+    const memory = createMemoryUsers();
+    memory.users.push(
+        { id: "admin", username: "admin", role: "admin" },
+        { id: "one", username: "alice-one", role: "user" },
+        { id: "two", username: "alice-two", role: "user" },
+    );
+    const service = createUserService(memory.repository);
+
+    await assert.rejects(
+        service.listUsersPage({ id: "one", role: "user" }, { page: 1 }),
+        /administrator/i,
+    );
+    const result = await service.listUsersPage(
+        { id: "admin", role: "admin" },
+        { page: "2", pageSize: "1", query: " alice " },
+    );
+
+    assert.deepEqual(result.items.map((user) => user.username), ["alice-two"]);
+    assert.deepEqual(result.pagination, { page: 2, pageSize: 1, total: 2, totalPages: 2 });
 });

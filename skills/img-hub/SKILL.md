@@ -23,13 +23,13 @@ Run commands from this skill directory with `python3 scripts/img_hub.py`:
 ```text
 python3 scripts/img_hub.py list [--kind file|text]
 python3 scripts/img_hub.py upload PATH [--directory RELATIVE/PATH]
-python3 scripts/img_hub.py publish-text NAME (--content TEXT | --file PATH) [--directory RELATIVE/PATH]
+python3 scripts/img_hub.py publish-text [NAME] (--content TEXT | --file PATH) [--directory RELATIVE/PATH] [--format markdown|rich]
 python3 scripts/img_hub.py replace RESOURCE_ID PATH
 python3 scripts/img_hub.py replace-text RESOURCE_ID (--content TEXT | --file PATH)
 python3 scripts/img_hub.py delete RESOURCE_ID
 ```
 
-Read the JSON response from stdout. For uploads and replacements, return the response resource's `url`; replacement keeps the stable path and changes its `?v=` cache version. Use `list` to find resource IDs before replacing or deleting.
+Read the JSON response from stdout. For uploads and replacements, return the response resource's `url`; replacement keeps the stable path and changes its `?v=` cache version. Uploads calculate MD5 locally, so the server can create an independent resource from an existing same-user object without sending the file body again. Published text may omit `NAME`; ImgHub generates a timestamped name. Use `list` to find resource IDs before replacing or deleting.
 
 Confirm with the user before `delete` unless deletion was explicitly requested. A resource is permanently removed from both metadata and object storage.
 

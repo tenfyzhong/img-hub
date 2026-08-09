@@ -2,7 +2,7 @@ import { AppError } from "./errors.js";
 
 const FORMATS = new Set(["plain", "markdown", "rich"]);
 const RICH_TAGS = /&lt;(\/?)(p|div|br|b|strong|i|em|u|s|ul|ol|li|blockquote|h1|h2|h3|pre|code)&gt;/gi;
-const HTML_CSP = "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
+const HTML_CSP = "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'";
 
 function escapeHtml(value) {
     return String(value)

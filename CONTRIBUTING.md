@@ -121,7 +121,7 @@ A repository made with **Use this template** is an independent snapshot with unr
 ```text
 src/                 Worker routes, authentication, D1 repositories, R2 services
 public/              Browser application served by Workers Assets
-migrations/          Idempotent D1 migrations
+migrations/          Single initial D1 schema
 test/                 Reusable Node.js unit and contract tests
 local-tests/          Complete Worker test with local D1, R2, assets, and cache
 extension/            Shared Chrome, Edge, and Firefox extension
@@ -152,7 +152,7 @@ Documentation-only and configuration-only changes do not need an artificial fail
 - Keep Turnstile fail-closed after three failed logins, validate tokens server-side, and keep plaintext usernames and IP addresses out of `login_challenges`.
 - Keep state-changing browser requests same-origin protected.
 - Do not add remote D1 or R2 bindings to the default development configuration.
-- New schema changes must be idempotent and represented in both runtime schema initialization and `migrations/` when applicable.
+- Until the first public release, fold every schema change into `migrations/0001_initial.sql` and keep runtime schema initialization aligned; do not add incremental migration files.
 - Public replacement URLs must keep their path and increment the `?v=` cache version.
 
 ### Style and commits
@@ -234,7 +234,7 @@ Clear the `img-hub-language` local storage key and change the browser's first pr
 
 ### Content audit and disable account testing
 
-The administration UI is part of the normal site root; there is no separate `/admin` route. Sign in as the administrator and open **Administration**. Upload a disposable file and text as another user, then verify **Content audit** identifies the uploader and exact public link. Open the link until it reports a cache hit, block it, and confirm the link immediately returns 404, the owner no longer lists it, and the audit tombstone remains. Use only disposable content because blocking permanently deletes the source object.
+The administration UI is part of the normal site root; there is no separate `/admin` route. Sign in as the administrator and open the dedicated **Content audit** and **User management** menus. Verify that searches filter on the server, page buttons fetch only the selected page, and empty searches restore the full paginated list. Upload a disposable file and text as another user, then verify Content audit identifies the uploader and exact public link. Open the link until it reports a cache hit, block it, and confirm the link immediately returns 404, the owner no longer lists it, and the audit tombstone remains. Use only disposable content because blocking permanently deletes the source object.
 
 Disable account for the test user and confirm its browser sessions and API keys stop working, login is rejected, and all of its public links return 404. Re-enable it and confirm a fresh password login works while old credentials remain revoked. Confirm the administrator cannot be disabled.
 
@@ -248,16 +248,17 @@ Use this manual checklist for changes that affect user behavior:
 6. Open a public URL twice. In browser developer tools, confirm the first versioned GET reports `X-ImgHub-Cache: MISS` and a repeated GET can report `HIT`. Unversioned or incorrect versions should report `BYPASS`.
 7. Replace file and text content. Confirm the path stays unchanged, `?v=` increments, and the new URL returns the new content.
 8. Delete each resource and confirm it disappears from the owner's list and its public URL no longer resolves.
-9. Open the dedicated **API keys** menu directly below **Security**. Create multiple keys and confirm the list expands downward on its own page, the cleartext value is shown once, an owner-scoped request succeeds, and revocation takes effect.
+9. Open the dedicated **API keys** menu directly below **Security**. Confirm its surface fills the content row, create multiple keys, and verify the list expands downward on its own page, the cleartext value is shown once, an owner-scoped request succeeds, and revocation takes effect.
 10. As the administrator, change the site title and welcome copy and confirm both the page and browser title update.
 11. Reset the regular user's password and confirm existing sessions and API keys stop working and the password-change requirement returns.
-12. Audit a file and text as the administrator and confirm each row shows its public URL and uploader.
+12. Open the separate **Content audit** and **User management** menus. Confirm search filters both lists, clearing the search restores all rows, and data beyond 20 results is reached with Previous/Next without lengthening the current page. Confirm user search fills the row and **Create user** opens and closes a right-side drawer instead of placing a second column beside the list. Audit a file and text and confirm each row shows its public URL and uploader.
 13. Cache a disposable resource, block it, and confirm the source is deleted, the public URL returns 404, and the audit tombstone remains.
 14. Disable and re-enable a regular account; confirm sessions/API keys are revoked and public links are unavailable while disabled.
-15. Confirm every password-setting form rejects mismatched confirmation, shows a closed eye while the password is hidden and an open eye while visible, and administrator password generation fills both fields and copies the same value.
-16. In **Upload**, switch through **Upload files**, **Publish text**, and the last **Import file** tab. Confirm all three panels keep the same responsive height without making the workspace scroll vertically. Click the enlarged drop zone, drag another file into it, paste a copied file, and paste a screenshot or other clipboard image while the file-upload panel is active. Confirm all four immediately upload with progress and URL/Markdown/HTML copy, with no separate file-picker button. Confirm an unnamed clipboard image receives a safe generated file name, and that pasting text into the directory or text editor still edits that field instead of uploading.
-17. In **Manage**, confirm files and texts are mixed in one resource list and share one root directory tree, with no type tabs. Verify directory filtering, grid/list modes, replacement, and deletion. Publish Markdown and rich text, verify both editor frames stay the same size, and edit the original content. From the third Upload tab, import disposable image and non-image HTTP(S) files such as a PDF or ZIP; confirm known-length responses show byte percentage, unknown-length responses show indeterminate progress with fetched bytes, the label changes to the storage-saving stage, non-images download safely, and completed imports appear in the timeline.
-18. Make three failed logins for a disposable user, confirm Turnstile appears in English and Chinese, complete it, and verify a correct login clears the challenge state.
+15. Confirm the **Security** password surface fills the content row. Verify every password-setting form rejects mismatched confirmation, shows a closed eye while the password is hidden and an open eye while visible, and administrator password generation fills both fields and copies the same value.
+16. In **Upload & publish**, confirm the three tabs fill one complete row, then switch through **Upload files**, **Publish text**, and the last **Import file** tab. Confirm all three panels keep the same responsive height without making the workspace scroll vertically. Click the enlarged drop zone, drag another file into it, paste a copied file, and paste a screenshot or other clipboard image while the file-upload panel is active. Confirm all four immediately hash and upload with progress and URL/Markdown/HTML copy, with no separate file-picker button. Use the **×** close button and confirm only the copy-result panel disappears while the published resource remains. Publish again, then switch an upload tab and a sidebar menu; confirm each navigation clears the result panel automatically. Upload the same file again and confirm the MD5 check completes it without client upload while creating a different resource and R2 object. Confirm every new name contains a millisecond timestamp, an unnamed clipboard image receives a safe generated base name, and pasting text into the directory or text editor still edits that field instead of uploading.
+17. In **Manage**, confirm files and texts are mixed in one resource list and share one root directory tree, with no type tabs. Verify directory filtering, grid/list modes, replacement, and deletion. Confirm the publishing form offers Markdown and rich text but no plain-text option, the file-name field is optional, both editor frames stay the same size, and the original content can be edited. Publish once with a name and once without one; confirm both receive timestamped names and both show URL/Markdown/HTML copy actions. Upload an oversized or unusually tall image and confirm its preview remains fully inside its card in both views. Confirm Markdown and rich-text resources show sandboxed in-card previews. From the third Upload tab, import disposable image and non-image HTTP(S) files such as a PDF or ZIP; confirm known-length responses show byte percentage, unknown-length responses show indeterminate progress with fetched bytes, the label changes to the storage-saving stage, non-images download safely, and completed imports appear in the timeline.
+18. In browser storage tools, confirm login creates HttpOnly access and refresh cookies. Delete only `img_hub_session`, reload, and confirm the refresh request keeps the user signed in while rotating both cookies. Delete both cookies and confirm password login is required. Administrator password reset and account disable must also invalidate refresh sessions.
+19. Make three failed logins for a disposable user, confirm Turnstile appears in English and Chinese, complete it, and verify a correct login clears the challenge state.
 
 To inspect cache headers without a browser, use a current public URL returned by the application. Use GET rather than `curl -I`, because HEAD intentionally bypasses cache storage:
 
@@ -266,15 +267,15 @@ curl --silent --show-error --dump-header - --output /dev/null \
   'http://localhost:8787/file/pub_REPLACE_WITH_CURRENT_ID?v=1'
 ```
 
-### R2 lifecycle exception
+### R2 backend retention
 
-Do not submit the **Administration → R2 retention** form during an offline/local-only manual test. That operation intentionally calls the Cloudflare R2 lifecycle API and requires a real account ID, bucket, and API token. Test its local validation and request handling with:
+Under **Site settings**, confirm the administrator can save an integer from 1 to 3650 days and that reload preserves it. The deployed Worker defaults to 91 days and runs a daily scheduled cleanup through the existing R2 binding; the browser never asks for a Cloudflare Account ID, bucket name, or API token. Validate the deletion boundary without contacting Cloudflare with:
 
 ```sh
 node --test test/lifecycle.test.js
 ```
 
-Only perform a live lifecycle test in a disposable Cloudflare account or bucket when the pull request specifically changes that integration. Never reuse production credentials or production data.
+Do not trigger retention against deployed R2 data during routine testing. Use the repository R2 double or an explicitly isolated local Wrangler state; only use disposable live data when the user explicitly authorizes it.
 
 ## Manual browser extension testing
 

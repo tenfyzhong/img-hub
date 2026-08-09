@@ -11,7 +11,8 @@ function createFixture(kind) {
         objectKey: `users/usr_alice/${kind}/notes/item.${kind === "text" ? "txt" : "png"}`,
         name: kind === "text" ? "item.txt" : "item.png",
         contentType: kind === "text" ? "text/plain; charset=utf-8" : "image/png",
-        version: 3,
+        textFormat: kind === "text" ? "plain" : undefined,
+        version: 1754481600000,
         publicId: "pub_0123456789abcdef0123456789abcdef",
     };
     const stored = new Map();
@@ -20,6 +21,10 @@ function createFixture(kind) {
         calls,
         pending,
         repository: {
+            async findByPublicId() {
+                calls.metadata += 1;
+                return allowed ? resource : null;
+            },
             async findPublicById() {
                 calls.metadata += 1;
                 return allowed ? resource : null;
@@ -53,7 +58,7 @@ function createFixture(kind) {
                 pending.push(promise);
             },
         },
-        route: { kind, publicId: resource.publicId },
+        route: { publicId: resource.publicId },
         deny() {
             allowed = false;
         },
@@ -63,7 +68,7 @@ function createFixture(kind) {
 for (const kind of ["file", "text"]) {
     test(`versioned ${kind} reads check availability then use edge cache before R2`, async () => {
         const fixture = createFixture(kind);
-        const url = `https://images.example.com/${kind}/${fixture.route.publicId}?v=3`;
+        const url = `https://images.example.com/${fixture.route.publicId}?v=1754481600000`;
         const first = await servePublicResource({
             request: new Request(url),
             ...fixture,
@@ -90,11 +95,11 @@ for (const kind of ["file", "text"]) {
 
 test("unversioned, mismatched-version, and HEAD reads bypass edge storage", async () => {
     const fixture = createFixture("file");
-    const base = `https://images.example.com/file/${fixture.route.publicId}`;
+    const base = `https://images.example.com/${fixture.route.publicId}`;
     for (const request of [
         new Request(base),
         new Request(`${base}?v=999`),
-        new Request(`${base}?v=3`, { method: "HEAD" }),
+        new Request(`${base}?v=1754481600000`, { method: "HEAD" }),
     ]) {
         const response = await servePublicResource({ request, ...fixture });
         assert.equal(response.headers.get("X-ImgHub-Cache"), "BYPASS");
@@ -104,7 +109,7 @@ test("unversioned, mismatched-version, and HEAD reads bypass edge storage", asyn
 
 test("a blocked resource cannot be served from an existing edge cache entry", async () => {
     const fixture = createFixture("file");
-    const url = `https://images.example.com/file/${fixture.route.publicId}?v=3`;
+    const url = `https://images.example.com/${fixture.route.publicId}?v=1754481600000`;
     const first = await servePublicResource({ request: new Request(url), ...fixture });
     await Promise.all(fixture.pending);
     assert.equal(first.status, 200);

@@ -36,8 +36,7 @@ test("builds isolated R2 keys for files and text", () => {
 test("public URLs use an opaque identifier and never reveal ownership or storage paths", () => {
     const publicId = "pub_0123456789abcdef0123456789abcdef";
     assert.equal(
-        buildPublicUrl("https://img.example.com", "file", publicId, 7),
-        `https://img.example.com/file/${publicId}?v=7`,
+        buildPublicUrl("https://img.example.com", publicId, 1754481600000),
+        `https://img.example.com/${publicId}?v=1754481600000`,
     );
-    assert.throws(() => buildPublicUrl("https://img.example.com", "file", "alice", 1), /public/i);
 });

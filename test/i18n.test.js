@@ -34,6 +34,8 @@ test("English and Chinese catalogs have the same keys and interpolate values", (
     assert.equal(translate("zh-CN", "upload.remoteTab"), "文件外链");
     assert.equal(translate("en", "files.remoteUrl"), "File URL");
     assert.equal(translate("zh-CN", "files.remoteUrl"), "文件外链");
+    assert.equal(translate("en", "upload.title"), "Upload & publish");
+    assert.equal(translate("zh-CN", "upload.title"), "上传发布");
 });
 
 test("every static interface translation marker exists in both catalogs", async () => {

@@ -31,26 +31,12 @@ test("rejects cross-origin state-changing requests", () => {
     })));
 });
 
-test("parses opaque public routes while retaining legacy route compatibility", () => {
+test("routes opaque public resource URLs", () => {
     const publicId = "pub_0123456789abcdef0123456789abcdef";
-    assert.deepEqual(routePublicResource(`/file/${publicId}`), {
-        kind: "file",
-        publicId,
-    });
-    assert.deepEqual(routePublicResource("/file/alice/trips/lake.png"), {
-        kind: "file",
-        username: "alice",
-        directory: "trips",
-        name: "lake.png",
-    });
-    assert.deepEqual(routePublicResource("/text/alice/notes/hello.txt"), {
-        kind: "text",
-        username: "alice",
-        directory: "notes",
-        name: "hello.txt",
-    });
-    assert.equal(routePublicResource("/file/alice"), null);
+    assert.deepEqual(routePublicResource(`/${publicId}`), { publicId });
+    assert.equal(routePublicResource("/file/something"), null);
     assert.equal(routePublicResource("/api/files"), null);
+    assert.equal(routePublicResource("/not-a-public-id"), null);
 });
 
 test("streams newline-delimited progress and serializes application errors", async () => {

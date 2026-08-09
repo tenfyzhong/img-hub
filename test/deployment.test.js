@@ -28,6 +28,7 @@ test("generated deployment config binds the provisioned D1 and R2 resources", ()
     assert.equal(config.r2_buckets[0].binding, "BUCKET");
     assert.equal(config.r2_buckets[0].bucket_name, "img-hub-files");
     assert.equal(config.assets.run_worker_first[0], "/api/*");
+    assert.deepEqual(config.triggers.crons, ["0 3 * * *"]);
     assert.equal(config.vars.TURNSTILE_SITE_KEY, "0x-site-key");
     assert.equal(config.vars.TURNSTILE_SECRET_KEY, undefined);
 });
@@ -134,7 +135,7 @@ test("finds an existing D1 database across Wrangler JSON shapes", () => {
     assert.equal(findDatabaseId([], "img-hub-db"), null);
 });
 
-test("GitHub deployment initializes storage, applies migrations, lifecycle, and worker", async () => {
+test("GitHub deployment initializes storage and deploys the scheduled worker", async () => {
     const workflow = await readFile(new URL("../.github/workflows/deploy.yml", import.meta.url), "utf8");
 
     assert.match(workflow, /deploy:cloudflare/);

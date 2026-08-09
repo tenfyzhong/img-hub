@@ -5,6 +5,7 @@ import {
     translations,
 } from "./i18n.js";
 import { buildShareFormats, filesFromClipboard, generateRandomPassword } from "./ui-utils.js";
+import { md5File } from "./md5.js";
 
 function savedLanguage() {
     try {
@@ -28,6 +29,8 @@ const state = {
     turnstileSiteKey: null,
     turnstileWidgetId: null,
     turnstileScript: null,
+    auditPage: { page: 1, pageSize: 20, query: "", total: 0, totalPages: 1 },
+    userPage: { page: 1, pageSize: 20, query: "", total: 0, totalPages: 1 },
 };
 
 const byId = (id) => document.getElementById(id);
@@ -88,7 +91,7 @@ function setLanguage(language, persist = true) {
         renderResources();
         renderHistory();
         const activeView = document.querySelector(".nav-button.active")?.dataset.view;
-        if (["admin", "api-keys"].includes(activeView)) switchView(activeView);
+        if (["admin", "audit", "users", "api-keys"].includes(activeView)) switchView(activeView);
     }
 }
 
@@ -101,7 +104,19 @@ function notify(message, error = false) {
     notify.timer = setTimeout(() => show(toast, false), 4200);
 }
 
-async function api(path, options = {}) {
+let refreshSessionPromise = null;
+
+async function refreshSession() {
+    if (!refreshSessionPromise) {
+        refreshSessionPromise = fetch("/api/auth/refresh", { method: "POST" })
+            .then((response) => response.ok)
+            .catch(() => false)
+            .finally(() => { refreshSessionPromise = null; });
+    }
+    return refreshSessionPromise;
+}
+
+async function api(path, options = {}, allowRefresh = true) {
     const request = { method: options.method || "GET", headers: { ...options.headers } };
     if (options.body instanceof FormData) {
         request.body = options.body;
@@ -111,6 +126,10 @@ async function api(path, options = {}) {
     }
     const response = await fetch(path, request);
     const payload = response.status === 204 ? null : await response.json().catch(() => null);
+    const excluded = ["/api/auth/login", "/api/auth/logout", "/api/auth/refresh", "/api/setup"];
+    if (response.status === 401 && allowRefresh && !excluded.includes(path) && await refreshSession()) {
+        return api(path, options, false);
+    }
     if (!response.ok) {
         const error = new Error(translatedError(
             payload?.error?.code,
@@ -135,7 +154,7 @@ function importResponseError(payload, status) {
     return error;
 }
 
-async function remoteImportRequest(body, onProgress) {
+async function remoteImportRequest(body, onProgress, allowRefresh = true) {
     const response = await fetch("/api/files/import", {
         method: "POST",
         headers: {
@@ -144,6 +163,9 @@ async function remoteImportRequest(body, onProgress) {
         },
         body: JSON.stringify(body),
     });
+    if (response.status === 401 && allowRefresh && await refreshSession()) {
+        return remoteImportRequest(body, onProgress, false);
+    }
     if (!response.ok) {
         const payload = await response.json().catch(() => null);
         throw importResponseError(payload, response.status);
@@ -314,7 +336,9 @@ function applyUser(user) {
     byId("profile-name").textContent = user.username;
     byId("profile-role").textContent = t(`role.${user.role}`);
     byId("profile-initial").textContent = user.username.charAt(0).toUpperCase();
-    show(byId("admin-nav"), user.role === "admin");
+    document.querySelectorAll("[data-admin-only]").forEach((element) => {
+        show(element, user.role === "admin");
+    });
     show(byId("app-shell"));
     switchView("upload");
 }
@@ -344,14 +368,23 @@ async function initialize() {
     }
 }
 
+function clearShareResult() {
+    state.lastShareFormats = null;
+    byId("upload-share-name").textContent = "";
+    show(byId("upload-share-result"), false);
+}
+
 function switchView(name) {
-    if (name === "admin" && state.user?.role !== "admin") return;
+    clearShareResult();
+    if (["admin", "audit", "users"].includes(name) && state.user?.role !== "admin") return;
     document.querySelectorAll(".view").forEach((view) => show(view, view.id === `view-${name}`));
     document.querySelectorAll(".nav-button").forEach((button) => button.classList.toggle("active", button.dataset.view === name));
     if (name === "upload") selectUploadMode(state.uploadMode);
     if (name === "manager") loadResources();
     if (name === "api-keys") loadApiKeys();
     if (name === "admin") loadAdministration();
+    if (name === "audit") loadAudit();
+    if (name === "users") loadUsers();
     if (name === "history") loadHistory();
 }
 
@@ -366,6 +399,7 @@ function updateModeTabs(prefix, mode, kinds) {
 }
 
 function selectUploadMode(mode) {
+    clearShareResult();
     const modes = ["file", "text", "remote"];
     state.uploadMode = modes.includes(mode) ? mode : "file";
     updateModeTabs("upload", state.uploadMode, modes);
@@ -394,6 +428,24 @@ function actionButton(label, title, handler) {
     return button;
 }
 
+function resourcePreview(resource) {
+    let preview = null;
+    if (resource.kind === "file" && resource.contentType?.startsWith("image/") && resource.contentType !== "image/svg+xml") {
+        preview = document.createElement("img");
+        preview.alt = "";
+    } else if (resource.kind === "text") {
+        preview = document.createElement("iframe");
+        preview.title = t("resource.textPreview", { name: resource.name });
+        preview.setAttribute("sandbox", "");
+        preview.tabIndex = -1;
+    }
+    if (!preview) return null;
+    preview.className = "resource-preview";
+    preview.src = resource.url;
+    preview.loading = "lazy";
+    return preview;
+}
+
 function renderResources() {
     const target = byId("resource-list");
     target.replaceChildren();
@@ -412,11 +464,9 @@ function renderResources() {
     for (const resource of resources) {
         const card = element("article", "resource-card");
         const icon = element("div", "resource-icon", resource.kind === "file" ? "◫" : "¶");
-        if (resource.kind === "file" && resource.contentType?.startsWith("image/") && resource.contentType !== "image/svg+xml") {
-            const preview = document.createElement("img");
-            preview.src = resource.url;
-            preview.alt = "";
-            preview.loading = "lazy";
+        const preview = resourcePreview(resource);
+        if (preview) {
+            icon.classList.add("has-preview");
             icon.replaceChildren(preview);
         }
         card.append(icon);
@@ -516,13 +566,18 @@ async function replaceResource(resource) {
         picker.type = "file";
         picker.addEventListener("change", async () => {
             if (!picker.files?.length) return;
+            const file = picker.files[0];
             const body = new FormData();
-            body.set("file", picker.files[0]);
             try {
+                const contentMd5 = await md5File(file, (fraction) => {
+                    updateUploadProgress(file, fraction * 0.1, "files.checkingDuplicate");
+                });
+                body.set("file", file);
+                body.set("md5", contentMd5);
                 const result = await uploadRequest(
                     `/api/resources/${encodeURIComponent(resource.id)}/content`,
                     body,
-                    (fraction) => updateUploadProgress(picker.files[0], fraction),
+                    (fraction) => updateUploadProgress(file, 0.1 + fraction * 0.9),
                     "PUT",
                 );
                 showShareResult(result.resource);
@@ -545,7 +600,7 @@ async function replaceResource(resource) {
         const form = byId("text-form");
         form.elements.name.value = resource.name;
         form.elements.directory.value = resource.directory;
-        form.elements.format.value = resource.textFormat || "plain";
+        form.elements.format.value = resource.textFormat === "rich" ? "rich" : "markdown";
         updateTextEditorMode();
         if ((resource.textFormat || "plain") === "rich") {
             byId("rich-text-editor").innerHTML = result.content;
@@ -573,7 +628,7 @@ async function deleteResource(resource) {
     }
 }
 
-function uploadRequest(path, formData, onProgress, method = "POST") {
+function uploadRequest(path, formData, onProgress, method = "POST", allowRefresh = true) {
     return new Promise((resolve, reject) => {
         const request = new XMLHttpRequest();
         request.open(method, path);
@@ -581,10 +636,18 @@ function uploadRequest(path, formData, onProgress, method = "POST") {
         request.upload.addEventListener("progress", (event) => {
             if (event.lengthComputable) onProgress(event.loaded / event.total);
         });
-        request.addEventListener("load", () => {
+        request.addEventListener("load", async () => {
             const payload = request.response;
             if (request.status >= 200 && request.status < 300) {
                 resolve(payload);
+                return;
+            }
+            if (request.status === 401 && allowRefresh && await refreshSession()) {
+                try {
+                    resolve(await uploadRequest(path, formData, onProgress, method, false));
+                } catch (error) {
+                    reject(error);
+                }
                 return;
             }
             const error = new Error(translatedError(
@@ -600,9 +663,9 @@ function uploadRequest(path, formData, onProgress, method = "POST") {
     });
 }
 
-function updateUploadProgress(file, fraction) {
+function updateUploadProgress(file, fraction, labelKey = "files.uploading") {
     const percent = Math.max(0, Math.min(100, Math.round(fraction * 100)));
-    byId("file-upload-label").textContent = t("files.uploading", { name: file.name });
+    byId("file-upload-label").textContent = t(labelKey, { name: file.name });
     byId("file-upload-percent").textContent = `${percent}%`;
     byId("file-upload-meter").value = percent;
     show(byId("file-upload-progress"));
@@ -645,11 +708,37 @@ async function uploadFiles(files) {
     try {
         for (let index = 0; index < selected.length; index += 1) {
             const file = selected[index];
+            const contentMd5 = await md5File(file, (fraction) => {
+                updateUploadProgress(
+                    file,
+                    (index + fraction * 0.1) / selected.length,
+                    "files.checkingDuplicate",
+                );
+            });
+            const instant = await api("/api/files/instant", {
+                method: "POST",
+                body: {
+                    directory,
+                    md5: contentMd5,
+                    name: file.name,
+                    size: file.size,
+                },
+            });
+            if (instant.resource) {
+                updateUploadProgress(
+                    file,
+                    (index + 1) / selected.length,
+                    "files.instantUploaded",
+                );
+                showShareResult(instant.resource);
+                continue;
+            }
             const body = new FormData();
             body.set("directory", directory);
             body.set("file", file);
+            body.set("md5", contentMd5);
             const result = await uploadRequest("/api/files", body, (fraction) => {
-                updateUploadProgress(file, (index + fraction) / selected.length);
+                updateUploadProgress(file, (index + 0.1 + fraction * 0.9) / selected.length);
             });
             showShareResult(result.resource);
         }
@@ -711,22 +800,52 @@ async function loadHistory() {
 
 async function loadAdministration() {
     try {
-        const [users, audit, lifecycle, settings] = await Promise.all([
-            api("/api/admin/users"),
-            api("/api/admin/resources"),
-            api("/api/admin/lifecycle"),
+        const [settings, retention] = await Promise.all([
             api("/api/site-settings"),
+            api("/api/admin/retention"),
         ]);
-        renderUsers(users.users);
-        renderAudit(audit.resources);
-        const form = byId("lifecycle-form");
-        form.elements.accountId.value = lifecycle.accountId || "";
-        form.elements.bucketName.value = lifecycle.bucketName || "";
-        form.elements.retentionDays.value = lifecycle.retentionDays || 91;
         const siteForm = byId("site-settings-form");
         for (const [name, value] of Object.entries(settings.site)) {
             siteForm.elements[name].value = value;
         }
+        byId("retention-form").elements.retentionDays.value = retention.retention.retentionDays;
+    } catch (error) {
+        notify(error.message, true);
+    }
+}
+
+function managementQuery(path, pageState) {
+    const parameters = new URLSearchParams({
+        page: String(pageState.page),
+        pageSize: String(pageState.pageSize),
+    });
+    if (pageState.query) parameters.set("q", pageState.query);
+    return `${path}?${parameters}`;
+}
+
+function updatePagination(prefix, pageState) {
+    byId(`${prefix}-page-summary`).textContent = t("pagination.summary", pageState);
+    byId(`${prefix}-page-previous`).disabled = pageState.page <= 1;
+    byId(`${prefix}-page-next`).disabled = pageState.page >= pageState.totalPages;
+}
+
+async function loadAudit() {
+    try {
+        const result = await api(managementQuery("/api/admin/resources", state.auditPage));
+        Object.assign(state.auditPage, result.pagination);
+        renderAudit(result.resources);
+        updatePagination("audit", state.auditPage);
+    } catch (error) {
+        notify(error.message, true);
+    }
+}
+
+async function loadUsers() {
+    try {
+        const result = await api(managementQuery("/api/admin/users", state.userPage));
+        Object.assign(state.userPage, result.pagination);
+        renderUsers(result.users);
+        updatePagination("user", state.userPage);
     } catch (error) {
         notify(error.message, true);
     }
@@ -785,7 +904,7 @@ async function blockResource(resource) {
     try {
         await api(`/api/admin/resources/${encodeURIComponent(resource.id)}/block`, { method: "POST" });
         notify(t("audit.blockDone"));
-        await loadAdministration();
+        await loadAudit();
     } catch (error) {
         notify(error.message, true);
     }
@@ -794,6 +913,10 @@ async function blockResource(resource) {
 function renderUsers(users) {
     const target = byId("user-list");
     target.replaceChildren();
+    if (!users.length) {
+        target.append(element("div", "empty-state", t("user.empty")));
+        return;
+    }
     for (const user of users) {
         const row = element("div", "user-row");
         const identity = element("span");
@@ -840,7 +963,7 @@ async function setUserDisabled(user, disabled) {
             body: { disabled },
         });
         notify(t(disabled ? "user.disabledDone" : "user.enabledDone", { username: user.username }));
-        await loadAdministration();
+        await loadUsers();
     } catch (error) {
         notify(error.message, true);
     }
@@ -1022,6 +1145,8 @@ document.querySelectorAll("[data-share-copy]").forEach((button) => {
     });
 });
 
+byId("dismiss-upload-share").addEventListener("click", clearShareResult);
+
 byId("remote-file-form").addEventListener("submit", (event) => {
     event.preventDefault();
     const form = event.currentTarget;
@@ -1075,10 +1200,11 @@ byId("text-form").addEventListener("submit", (event) => {
         if (body.format === "rich") body.content = byId("rich-text-editor").innerHTML.trim();
         if (!body.content) throw new Error(t("error.text_required"));
         const editing = state.editingTextId;
-        await api(editing ? `/api/resources/${encodeURIComponent(editing)}/content` : "/api/texts", {
+        const result = await api(editing ? `/api/resources/${encodeURIComponent(editing)}/content` : "/api/texts", {
             method: editing ? "PUT" : "POST",
             body,
         });
+        showShareResult(result.resource);
         resetTextEditor();
         notify(t(editing ? "resource.textReplaced" : "message.textPublished"));
         await Promise.all([loadResources(), loadHistory()]);
@@ -1093,9 +1219,23 @@ byId("user-form").addEventListener("submit", (event) => {
         await api("/api/admin/users", { method: "POST", body });
         form.reset();
         hidePasswords(form);
+        byId("user-create-drawer").close();
         notify(t("user.created", { username: body.username }));
-        await loadAdministration();
+        await loadUsers();
     });
+});
+
+byId("open-user-create").addEventListener("click", () => {
+    const drawer = byId("user-create-drawer");
+    const form = byId("user-form");
+    form.reset();
+    hidePasswords(form);
+    drawer.showModal();
+    form.elements.username.focus();
+});
+byId("close-user-create").addEventListener("click", () => byId("user-create-drawer").close());
+byId("user-create-drawer").addEventListener("click", (event) => {
+    if (event.target === event.currentTarget) event.currentTarget.close();
 });
 
 function generateForForm(form) {
@@ -1133,21 +1273,24 @@ byId("reset-password-form").addEventListener("submit", (event) => {
         form.reset();
         hidePasswords(form);
         notify(t("user.resetDone", { username }));
-        await loadAdministration();
+        await loadUsers();
     });
 });
 
-byId("lifecycle-form").addEventListener("submit", (event) => {
+byId("audit-search-form").addEventListener("submit", (event) => {
     event.preventDefault();
     const form = event.currentTarget;
-    submit(form, async () => {
-        const body = formBody(form);
-        body.retentionDays = Number(body.retentionDays);
-        await api("/api/admin/lifecycle", { method: "PUT", body });
-        form.elements.apiToken.value = "";
-        hidePasswords(form);
-        notify(t("message.lifecycleUpdated", { days: body.retentionDays }));
-    });
+    state.auditPage.query = form.elements.q.value.trim();
+    state.auditPage.page = 1;
+    loadAudit();
+});
+
+byId("user-search-form").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    state.userPage.query = form.elements.q.value.trim();
+    state.userPage.page = 1;
+    loadUsers();
 });
 
 byId("site-settings-form").addEventListener("submit", (event) => {
@@ -1163,11 +1306,44 @@ byId("site-settings-form").addEventListener("submit", (event) => {
     });
 });
 
+byId("retention-form").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    submit(form, async () => {
+        const retentionDays = Number(form.elements.retentionDays.value);
+        await api("/api/admin/retention", {
+            method: "PUT",
+            body: { retentionDays },
+        });
+        notify(t("message.retentionUpdated", { days: retentionDays }));
+    });
+});
+
 document.querySelectorAll(".nav-button").forEach((button) => {
     button.addEventListener("click", () => switchView(button.dataset.view));
 });
 
-byId("audit-refresh").addEventListener("click", loadAdministration);
+function changeManagementPage(pageState, delta, loader) {
+    const nextPage = pageState.page + delta;
+    if (nextPage < 1 || nextPage > pageState.totalPages) return;
+    pageState.page = nextPage;
+    loader();
+}
+
+byId("audit-refresh").addEventListener("click", loadAudit);
+byId("user-refresh").addEventListener("click", loadUsers);
+byId("audit-page-previous").addEventListener("click", () => (
+    changeManagementPage(state.auditPage, -1, loadAudit)
+));
+byId("audit-page-next").addEventListener("click", () => (
+    changeManagementPage(state.auditPage, 1, loadAudit)
+));
+byId("user-page-previous").addEventListener("click", () => (
+    changeManagementPage(state.userPage, -1, loadUsers)
+));
+byId("user-page-next").addEventListener("click", () => (
+    changeManagementPage(state.userPage, 1, loadUsers)
+));
 byId("history-refresh").addEventListener("click", loadHistory);
 byId("manager-refresh").addEventListener("click", loadResources);
 

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import mimetypes
 import os
@@ -36,7 +37,17 @@ def configuration() -> tuple[str, str]:
     return base_url, api_key
 
 
-def multipart_file(path: Path, directory: str | None) -> tuple[bytes, str]:
+def file_md5(path: Path) -> str:
+    digest = hashlib.md5(usedforsecurity=False)
+    with path.open("rb") as source:
+        while chunk := source.read(2 * 1024 * 1024):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def multipart_file(
+    path: Path, directory: str | None, content_md5: str | None = None
+) -> tuple[bytes, str]:
     boundary = f"img-hub-{uuid.uuid4().hex}"
     content_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
     chunks: list[bytes] = []
@@ -48,6 +59,11 @@ def multipart_file(path: Path, directory: str | None) -> tuple[bytes, str]:
         add(f"--{boundary}\r\n")
         add('Content-Disposition: form-data; name="directory"\r\n\r\n')
         add(directory)
+        add("\r\n")
+    if content_md5 is not None:
+        add(f"--{boundary}\r\n")
+        add('Content-Disposition: form-data; name="md5"\r\n\r\n')
+        add(content_md5)
         add("\r\n")
     quoted_name = path.name.replace('"', "")
     add(f"--{boundary}\r\n")
@@ -105,23 +121,39 @@ def execute(arguments: argparse.Namespace) -> object:
         query = "" if arguments.kind is None else "?" + urllib.parse.urlencode({"kind": arguments.kind})
         return request_json("GET", f"/api/resources{query}")
     if arguments.command == "upload":
-        body, content_type = multipart_file(Path(arguments.path), arguments.directory)
+        path = Path(arguments.path)
+        content_md5 = file_md5(path)
+        instant = request_json(
+            "POST", "/api/files/instant",
+            body=json_body({
+                "directory": arguments.directory,
+                "md5": content_md5,
+                "name": path.name,
+                "size": path.stat().st_size,
+            }),
+            content_type="application/json",
+        )
+        if isinstance(instant, dict) and instant.get("resource"):
+            return instant
+        body, content_type = multipart_file(path, arguments.directory, content_md5)
         return request_json("POST", "/api/files", body=body, content_type=content_type)
     if arguments.command == "publish-text":
         body = json_body({
             "name": arguments.name,
             "directory": arguments.directory,
             "content": read_text(arguments),
+            "format": arguments.format,
         })
         return request_json("POST", "/api/texts", body=body, content_type="application/json")
     if arguments.command == "replace":
-        body, content_type = multipart_file(Path(arguments.path), None)
+        path = Path(arguments.path)
+        body, content_type = multipart_file(path, None, file_md5(path))
         return request_json(
             "PUT", f"/api/resources/{urllib.parse.quote(arguments.resource_id, safe='')}/content",
             body=body, content_type=content_type,
         )
     if arguments.command == "replace-text":
-        body = json_body({"content": read_text(arguments)})
+        body = json_body({"content": read_text(arguments), "format": arguments.format})
         return request_json(
             "PUT", f"/api/resources/{urllib.parse.quote(arguments.resource_id, safe='')}/content",
             body=body, content_type="application/json",
@@ -145,8 +177,9 @@ def parser() -> argparse.ArgumentParser:
     upload.add_argument("--directory", default="")
 
     publish_text = commands.add_parser("publish-text", help="publish UTF-8 text")
-    publish_text.add_argument("name")
+    publish_text.add_argument("name", nargs="?", default="")
     publish_text.add_argument("--directory", default="")
+    publish_text.add_argument("--format", choices=("markdown", "rich"), default="markdown")
     text_input = publish_text.add_mutually_exclusive_group(required=True)
     text_input.add_argument("--content")
     text_input.add_argument("--file")
@@ -157,6 +190,7 @@ def parser() -> argparse.ArgumentParser:
 
     replace_text = commands.add_parser("replace-text", help="replace text without changing its path")
     replace_text.add_argument("resource_id")
+    replace_text.add_argument("--format", choices=("markdown", "rich"), default="markdown")
     replacement_input = replace_text.add_mutually_exclusive_group(required=True)
     replacement_input.add_argument("--content")
     replacement_input.add_argument("--file")

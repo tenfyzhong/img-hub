@@ -17,6 +17,13 @@ export function buildAdminResetSql(passwordHash) {
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS refresh_sessions (
+    token_hash TEXT PRIMARY KEY,
+    access_token_hash TEXT NOT NULL REFERENCES sessions(token_hash) ON DELETE CASCADE,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    expires_at TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 INSERT OR IGNORE INTO username_aliases (username, user_id)
 SELECT administrator.username, administrator.id
 FROM users AS administrator
@@ -40,6 +47,8 @@ SET password_hash = ${sqlLiteral(passwordHash)}, must_change_password = 1
 WHERE role = 'admin';
 SELECT changes() AS administrators_reset;
 SELECT username AS administrator_username FROM users WHERE role = 'admin';
+DELETE FROM refresh_sessions
+WHERE user_id IN (SELECT id FROM users WHERE role = 'admin');
 DELETE FROM sessions
 WHERE user_id IN (SELECT id FROM users WHERE role = 'admin');
 UPDATE api_keys

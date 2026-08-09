@@ -1,82 +1,79 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-import { buildLifecycleRules, configureLifecycle } from "../src/lifecycle.js";
+import { createRetentionService } from "../src/retention-service.js";
 
-test("adds a 91-day default deletion rule without dropping existing rules", () => {
-    const existing = [{
-        id: "abort-multipart",
-        enabled: true,
-        conditions: { prefix: "" },
-        abortMultipartUploadsTransition: { condition: { type: "Age", maxAge: 604800 } },
-    }];
-    const rules = buildLifecycleRules(existing, 91);
-
-    assert.equal(rules.length, 2);
-    assert.deepEqual(rules[0], existing[0]);
-    assert.deepEqual(rules[1], {
-        id: "img-hub-default-expiration",
-        enabled: true,
-        conditions: { prefix: "users/" },
-        deleteObjectsTransition: { condition: { type: "Age", maxAge: 91 * 86400 } },
-    });
-});
-
-test("replaces only the lifecycle rule managed by this application", () => {
-    const rules = buildLifecycleRules([
-        { id: "img-hub-default-expiration", enabled: true },
-        { id: "keep-me", enabled: true },
-    ], 30);
-
-    assert.equal(rules.length, 2);
-    assert.equal(rules[0].id, "keep-me");
-    assert.equal(rules[1].deleteObjectsTransition.condition.maxAge, 30 * 86400);
-});
-
-test("validates lifecycle retention range", () => {
-    assert.throws(() => buildLifecycleRules([], 0), /between 1 and 3650/i);
-    assert.throws(() => buildLifecycleRules([], 3651), /between 1 and 3650/i);
-});
-
-test("updates lifecycle through the Cloudflare API while preserving existing rules", async () => {
-    const requests = [];
-    const fakeFetch = async (url, options = {}) => {
-        requests.push({ url, options });
-        if (!options.method || options.method === "GET") {
-            return Response.json({ success: true, result: { rules: [{ id: "existing", enabled: true }] } });
-        }
-        return Response.json({ success: true, result: {} });
+function memorySettings(initial = {}) {
+    const values = new Map(Object.entries(initial));
+    return {
+        values,
+        async get(key) {
+            return values.get(key) ?? null;
+        },
+        async set(key, value) {
+            values.set(key, String(value));
+        },
     };
+}
 
-    const result = await configureLifecycle({
-        accountId: "account-id",
-        bucketName: "my bucket",
-        apiToken: "secret-token",
-        retentionDays: 91,
-        fetchImpl: fakeFetch,
-    });
+test("administrators configure a bounded backend retention period", async () => {
+    const settings = memorySettings();
+    const bucket = { async list() { return { objects: [], truncated: false }; } };
+    const service = createRetentionService(settings, bucket);
 
-    assert.equal(requests.length, 2);
-    assert.equal(requests[0].url, "https://api.cloudflare.com/client/v4/accounts/account-id/r2/buckets/my%20bucket/lifecycle");
-    assert.equal(requests[0].options.headers.Authorization, "Bearer secret-token");
-    const body = JSON.parse(requests[1].options.body);
-    assert.equal(body.rules[0].id, "existing");
-    assert.equal(body.rules[1].deleteObjectsTransition.condition.maxAge, 91 * 86400);
-    assert.deepEqual(result, { retentionDays: 91, bucketName: "my bucket" });
-    assert.doesNotMatch(JSON.stringify(result), /secret-token/);
+    assert.deepEqual(await service.get({ role: "admin" }), { retentionDays: 91 });
+    assert.deepEqual(await service.update({ role: "admin" }, 180), { retentionDays: 180 });
+    assert.equal(settings.values.get("r2_retention_days"), "180");
+    await assert.rejects(service.update({ role: "user" }, 30), /administrator/i);
+    await assert.rejects(service.update({ role: "admin" }, 0), /between 1 and 3650/i);
+    await assert.rejects(service.update({ role: "admin" }, 30.5), /between 1 and 3650/i);
 });
 
-test("reports Cloudflare lifecycle API errors", async () => {
-    const fakeFetch = async () => Response.json({
-        success: false,
-        errors: [{ message: "token lacks permission" }],
-    }, { status: 403 });
+test("scheduled retention deletes only expired user objects through the R2 binding", async () => {
+    const settings = memorySettings({ r2_retention_days: "30" });
+    const deleted = [];
+    const bucket = {
+        async list(options) {
+            assert.deepEqual(options, { prefix: "users/", limit: 1000 });
+            return {
+                objects: [
+                    { key: "users/old/file/a", uploaded: new Date("2026-06-01T00:00:00Z") },
+                    { key: "users/new/file/b", uploaded: new Date("2026-07-20T00:00:00Z") },
+                ],
+                truncated: false,
+            };
+        },
+        async delete(keys) {
+            deleted.push(...keys);
+        },
+    };
+    const service = createRetentionService(
+        settings,
+        bucket,
+        () => new Date("2026-08-01T00:00:00Z"),
+    );
 
-    await assert.rejects(configureLifecycle({
-        accountId: "account-id",
-        bucketName: "bucket",
-        apiToken: "token",
-        retentionDays: 91,
-        fetchImpl: fakeFetch,
-    }), /token lacks permission/i);
+    assert.deepEqual(await service.run(), { scanned: 2, deleted: 1, retentionDays: 30 });
+    assert.deepEqual(deleted, ["users/old/file/a"]);
+});
+
+test("retention is managed by the deployed backend without Cloudflare credentials in the UI", async () => {
+    const [worker, html, javascript, wrangler, deploy] = await Promise.all([
+        readFile(new URL("../src/index.js", import.meta.url), "utf8"),
+        readFile(new URL("../public/index.html", import.meta.url), "utf8"),
+        readFile(new URL("../public/app.js", import.meta.url), "utf8"),
+        readFile(new URL("../wrangler.jsonc", import.meta.url), "utf8"),
+        readFile(new URL("../scripts/deploy.mjs", import.meta.url), "utf8"),
+    ]);
+
+    assert.match(html, /id="retention-form"/);
+    assert.match(html, /name="retentionDays"[^>]*type="number"/);
+    assert.doesNotMatch(html, /name="(?:accountId|bucketName|apiToken)"/);
+    assert.match(javascript, /\/api\/admin\/retention/);
+    assert.match(worker, /async scheduled\(/);
+    assert.match(wrangler, /"crons"\s*:\s*\[\s*"0 3 \* \* \*"/);
+    assert.match(deploy, /r2["'], ["']bucket["'], ["']lifecycle["'], ["']remove/);
+    assert.doesNotMatch(deploy, /r2["'], ["']bucket["'], ["']lifecycle["'], ["'](?:add|set)/);
+    assert.doesNotMatch(deploy, /IMG_HUB_RETENTION_DAYS/);
 });

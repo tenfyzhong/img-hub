@@ -21,7 +21,7 @@ test("contributor guides document development, tests, and manual verification in
         assert.match(guide, /npm run build:extension/);
         assert.match(guide, /npm run check:deploy/);
         assert.match(guide, /git commit -s/);
-        assert.match(guide, /R2.*lifecycle|R2.*生命周期/is);
+        assert.match(guide, /R2.*retention|R2.*保留/is);
         assert.match(guide, /develop/);
         assert.match(guide, /feature\/\*/);
         assert.match(guide, /release\/\*/);

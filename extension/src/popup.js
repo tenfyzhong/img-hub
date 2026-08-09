@@ -1,3 +1,5 @@
+import { md5File } from "./md5.js";
+
 const extensionApi = globalThis.browser ?? globalThis.chrome;
 
 const elements = Object.fromEntries([
@@ -175,10 +177,26 @@ elements["logout-button"].addEventListener("click", async () => {
 elements["upload-form"].addEventListener("submit", async (event) => {
     event.preventDefault();
     try {
+        const file = elements["image-file"].files[0];
+        setMessage("Checking for instant upload…");
+        const md5 = await md5File(file);
+        const instant = await api("/api/files/instant", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                directory: elements.directory.value,
+                md5,
+                name: file.name,
+                size: file.size,
+            }),
+        });
         const form = new FormData();
         form.set("directory", elements.directory.value);
-        form.set("file", elements["image-file"].files[0]);
-        const payload = await api("/api/files", { method: "POST", body: form });
+        form.set("file", file);
+        form.set("md5", md5);
+        const payload = instant.resource
+            ? instant
+            : await api("/api/files", { method: "POST", body: form });
         elements["image-file"].value = "";
         await navigator.clipboard.writeText(payload.resource.url);
         setMessage("Uploaded. The public URL is on your clipboard.", true);
@@ -218,8 +236,10 @@ elements["replacement-file"].addEventListener("change", async () => {
     const file = elements["replacement-file"].files[0];
     if (!file || !replacementResourceId) return;
     try {
+        const md5 = await md5File(file);
         const form = new FormData();
         form.set("file", file);
+        form.set("md5", md5);
         const payload = await api(`/api/resources/${encodeURIComponent(replacementResourceId)}/content`, {
             method: "PUT",
             body: form,

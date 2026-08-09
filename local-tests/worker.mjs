@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import test from "node:test";
 
 import { unstable_dev } from "wrangler";
@@ -14,6 +15,20 @@ function jsonRequest(method, body, cookie) {
         },
         body: JSON.stringify(body),
     };
+}
+
+function responseCookies(response) {
+    const values = typeof response.headers.getSetCookie === "function"
+        ? response.headers.getSetCookie()
+        : String(response.headers.get("Set-Cookie") || "").split(/,\s*(?=[^;,]+=)/);
+    return Object.fromEntries(values.filter(Boolean).map((value) => {
+        const pair = value.split(";", 1)[0];
+        return [pair.slice(0, pair.indexOf("=")), pair];
+    }));
+}
+
+function cookieHeader(cookies) {
+    return Object.values(cookies).join("; ");
 }
 
 test("the complete Worker uses only local D1, R2, assets, and cache simulations", async (context) => {
@@ -63,11 +78,29 @@ test("the complete Worker uses only local D1, R2, assets, and cache simulations"
     }));
     assert.equal(setupResponse.status, 201);
     assert.equal((await setupResponse.clone().json()).user.username, "admin");
-    const cookie = setupResponse.headers.get("Set-Cookie").split(";", 1)[0];
+    const setupCookies = responseCookies(setupResponse);
+    assert.ok(setupCookies.img_hub_session);
+    assert.ok(setupCookies.img_hub_refresh);
+    const refreshResponse = await worker.fetch("/api/auth/refresh", {
+        method: "POST",
+        headers: { Cookie: cookieHeader(setupCookies) },
+    });
+    assert.equal(refreshResponse.status, 200);
+    const refreshedCookies = responseCookies(refreshResponse);
+    assert.notEqual(refreshedCookies.img_hub_session, setupCookies.img_hub_session);
+    assert.notEqual(refreshedCookies.img_hub_refresh, setupCookies.img_hub_refresh);
+    assert.equal((await worker.fetch("/api/auth/refresh", {
+        method: "POST",
+        headers: { Cookie: setupCookies.img_hub_refresh },
+    })).status, 401);
+    const cookie = refreshedCookies.img_hub_session;
 
     const form = new FormData();
     form.set("directory", "integration");
-    form.set("file", new File([new Uint8Array([137, 80, 78, 71])], "sample.png", { type: "image/png" }));
+    const sampleBytes = new Uint8Array([137, 80, 78, 71]);
+    const sampleMd5 = createHash("md5").update(sampleBytes).digest("hex");
+    form.set("file", new File([sampleBytes], "sample.png", { type: "image/png" }));
+    form.set("md5", sampleMd5);
     const uploadResponse = await fetch(`${localOrigin}/api/files`, {
         method: "POST",
         headers: { Cookie: cookie },
@@ -76,8 +109,23 @@ test("the complete Worker uses only local D1, R2, assets, and cache simulations"
     assert.equal(uploadResponse.status, 201);
     const uploaded = await uploadResponse.json();
     const publicPath = new URL(uploaded.resource.url).pathname + new URL(uploaded.resource.url).search;
-    assert.match(new URL(uploaded.resource.url).pathname, /^\/file\/pub_[a-f0-9]{32}$/);
+    assert.match(new URL(uploaded.resource.url).pathname, /^\/pub_[a-f0-9]{32}$/);
+    assert.match(uploaded.resource.name, /^sample-\d{8}T\d{9}\.png$/);
     assert.doesNotMatch(uploaded.resource.url, /admin|integration|sample\.png/i);
+
+    const instantResponse = await worker.fetch("/api/files/instant", jsonRequest("POST", {
+        directory: "integration",
+        md5: sampleMd5,
+        name: "sample-copy.png",
+        size: sampleBytes.byteLength,
+    }, cookie));
+    assert.equal(instantResponse.status, 200);
+    const instant = await instantResponse.json();
+    assert.equal(instant.instant, true);
+    assert.notEqual(instant.resource.id, uploaded.resource.id);
+    assert.match(instant.resource.name, /^sample-copy-\d{8}T\d{9}\.png$/);
+    assert.equal((await worker.fetch(new URL(instant.resource.url).pathname
+        + new URL(instant.resource.url).search)).status, 200);
 
     const firstRead = await worker.fetch(publicPath);
     assert.equal(firstRead.status, 200);
@@ -91,11 +139,20 @@ test("the complete Worker uses only local D1, R2, assets, and cache simulations"
     const auditResponse = await worker.fetch("/api/admin/resources", { headers: { Cookie: cookie } });
     assert.equal(auditResponse.status, 200);
     const audit = await auditResponse.json();
-    assert.equal(audit.resources[0].ownerUsername, "admin");
+    assert.ok(audit.pagination.total >= 2);
+    const uploadedAudit = audit.resources.find((resource) => resource.id === uploaded.resource.id);
+    assert.equal(uploadedAudit.ownerUsername, "admin");
     assert.equal(
-        new URL(audit.resources[0].url).pathname + new URL(audit.resources[0].url).search,
+        new URL(uploadedAudit.url).pathname + new URL(uploadedAudit.url).search,
         publicPath,
     );
+    const searchedAudit = await worker.fetch(
+        "/api/admin/resources?q=sample-copy&page=1&pageSize=1",
+        { headers: { Cookie: cookie } },
+    ).then((response) => response.json());
+    assert.equal(searchedAudit.resources.length, 1);
+    assert.equal(searchedAudit.pagination.pageSize, 1);
+    assert.equal(searchedAudit.pagination.total, 1);
 
     const blockResponse = await worker.fetch(`/api/admin/resources/${uploaded.resource.id}/block`, {
         method: "POST",
@@ -106,8 +163,9 @@ test("the complete Worker uses only local D1, R2, assets, and cache simulations"
     assert.equal(blockedRead.status, 404);
     const blockedAudit = await worker.fetch("/api/admin/resources", { headers: { Cookie: cookie } })
         .then((response) => response.json());
-    assert.ok(blockedAudit.resources[0].blockedAt);
-    assert.equal(blockedAudit.resources[0].blockedByUsername, "admin");
+    const blockedResource = blockedAudit.resources.find((resource) => resource.id === uploaded.resource.id);
+    assert.ok(blockedResource.blockedAt);
+    assert.equal(blockedResource.blockedByUsername, "admin");
 
     const createUserResponse = await worker.fetch("/api/admin/users", jsonRequest("POST", {
         username: "localuser",
@@ -116,6 +174,17 @@ test("the complete Worker uses only local D1, R2, assets, and cache simulations"
     }, cookie));
     assert.equal(createUserResponse.status, 201);
     const createdUser = await createUserResponse.json();
+    const searchedUsers = await worker.fetch(
+        "/api/admin/users?q=local&page=1&pageSize=1",
+        { headers: { Cookie: cookie } },
+    ).then((response) => response.json());
+    assert.deepEqual(searchedUsers.users.map((user) => user.username), ["localuser"]);
+    assert.deepEqual(searchedUsers.pagination, {
+        page: 1,
+        pageSize: 1,
+        total: 1,
+        totalPages: 1,
+    });
     const userLogin = await worker.fetch("/api/auth/login", jsonRequest("POST", {
         username: "localuser",
         password: "local temporary password",
@@ -133,12 +202,13 @@ test("the complete Worker uses only local D1, R2, assets, and cache simulations"
     assert.equal(apiKeyResponse.status, 201);
     const apiKey = await apiKeyResponse.json();
     const userTextResponse = await worker.fetch("/api/texts", jsonRequest("POST", {
-        name: "account-status.md",
+        name: "",
         content: "# Visible while the account is enabled",
         format: "markdown",
     }, userCookie));
     assert.equal(userTextResponse.status, 201);
     const userText = await userTextResponse.json();
+    assert.match(userText.resource.name, /^text-\d{8}T\d{9}\.md$/);
     const userTextPath = new URL(userText.resource.url).pathname + new URL(userText.resource.url).search;
     const renderedText = await worker.fetch(userTextPath);
     assert.equal(renderedText.status, 200);
@@ -178,4 +248,15 @@ test("the complete Worker uses only local D1, R2, assets, and cache simulations"
     assert.equal(settingsResponse.status, 200);
     const publicSettings = await worker.fetch("/api/site-settings").then((response) => response.json());
     assert.equal(publicSettings.site.siteTitle, "Local Gallery");
+
+    const defaultRetention = await worker.fetch("/api/admin/retention", {
+        headers: { cookie },
+    }).then((response) => response.json());
+    assert.equal(defaultRetention.retention.retentionDays, 91);
+    const retentionResponse = await worker.fetch("/api/admin/retention", jsonRequest("PUT", {
+        retentionDays: 45,
+    }, cookie));
+    assert.equal(retentionResponse.status, 200);
+    const savedRetention = await retentionResponse.json();
+    assert.equal(savedRetention.retention.retentionDays, 45);
 });

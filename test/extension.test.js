@@ -56,6 +56,8 @@ test("extension builds generic Chromium and Firefox packages", async (context) =
     assert.match(client, /turnstile_required/);
     assert.match(client, /open the ImgHub website/i);
     assert.match(client, /\/api\/files/);
+    assert.match(client, /md5File/);
+    assert.match(client, /\/api\/files\/instant/);
     assert.doesNotMatch(`${popup}\n${client}`, /workers\.dev|img-hub\.[a-z]/i);
 
     const chromiumManifest = JSON.parse(

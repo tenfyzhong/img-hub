@@ -1,5 +1,6 @@
 import { hashPassword, validatePassword, verifyPassword } from "./auth.js";
 import { AppError, requireAdministrator } from "./errors.js";
+import { normalizePageOptions, paginated } from "./pagination.js";
 
 function createId(prefix) {
     return `${prefix}_${crypto.randomUUID().replaceAll("-", "")}`;
@@ -79,6 +80,13 @@ export function createUserService(repository) {
         async listUsers(actor) {
             requireAdministrator(actor);
             return repository.list();
+        },
+
+        async listUsersPage(actor, input) {
+            requireAdministrator(actor);
+            const options = normalizePageOptions(input);
+            const result = await repository.listPage(options);
+            return paginated(result.items, result.total, options);
         },
 
         async setDisabled(actor, userId, disabled) {

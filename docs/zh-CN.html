@@ -16,7 +16,7 @@
     <aside>
       <strong>目录</strong>
       <nav>
-        <a href="#choose">选择部署方式</a><a href="#button">Cloudflare 按钮</a><a href="#cli">命令行部署</a><a href="#github">GitHub Actions</a><a href="#api-keys">API Key 与 Skill</a><a href="#extension">浏览器插件</a><a href="#release">版本发布</a><a href="#first-run">首次启动</a><a href="#language">语言</a><a href="#admin-recovery">管理员找回</a><a href="#moderation">管理端与内容审计</a><a href="#lifecycle">R2 生命周期</a><a href="#paths">存储路径</a><a href="#cache">公开读取缓存</a><a href="#appearance">站点外观</a><a href="#local">本地开发</a><a href="#troubleshooting">故障排查</a>
+        <a href="#choose">选择部署方式</a><a href="#button">Cloudflare 按钮</a><a href="#cli">命令行部署</a><a href="#github">GitHub Actions</a><a href="#api-keys">API Key 与 Skill</a><a href="#extension">浏览器插件</a><a href="#release">版本发布</a><a href="#first-run">首次启动</a><a href="#language">语言</a><a href="#admin-recovery">管理员找回</a><a href="#moderation">管理端与内容审计</a><a href="#lifecycle">R2 保留策略</a><a href="#paths">存储路径</a><a href="#cache">公开读取缓存</a><a href="#appearance">站点外观</a><a href="#local">本地开发</a><a href="#troubleshooting">故障排查</a>
       </nav>
     </aside>
     <main>
@@ -31,8 +31,8 @@
         <h2>选择部署方式</h2>
         <div class="cards">
           <div class="card"><strong>Cloudflare 一键按钮</strong><p>最快开始。自动识别的部署命令会先初始化 D1、R2 和 Turnstile，再完成 Worker 部署。</p></div>
-          <div class="card"><strong>命令行一键部署</strong><p>显式初始化资源、运行 migration、配置 Turnstile、设置默认 91 天策略并部署 Worker。</p></div>
-          <div class="card"><strong>GitHub Actions</strong><p>develop 使用无 Secret CI，main 稳定部署，并包含 D1/R2 初始化和生命周期配置。</p></div>
+          <div class="card"><strong>命令行一键部署</strong><p>显式初始化资源、应用初始 D1 schema、配置 Turnstile、部署每日保留任务和 Worker。</p></div>
+          <div class="card"><strong>GitHub Actions</strong><p>develop 使用无 Secret CI，main 稳定部署，并包含 D1/R2 初始化和定时后端任务。</p></div>
           <div class="card"><strong>本地开发</strong><p>通过 Wrangler 在本地持久化 D1/R2，无需远端资源。</p></div>
         </div>
       </section>
@@ -43,7 +43,7 @@
           <li>打开 <a href="https://deploy.workers.cloudflare.com/?url=https://github.com/tenfyzhong/img-hub">Cloudflare 部署页面</a>。</li>
           <li>授权目标账号，保留自动识别的 <code>npm run deploy</code> 命令并部署；它会自动初始化 D1、R2 和 managed Turnstile Widget。</li>
           <li>打开生成的 <code>workers.dev</code> 地址；首次请求会初始化 D1 表结构。</li>
-          <li>为固定管理员用户名 <code>admin</code> 设置密码，然后在 Administration 中配置 R2 保留策略。</li>
+          <li>为固定管理员用户名 <code>admin</code> 设置密码；保留时间默认 91 天，可在 <strong>站点设置</strong> 中修改。</li>
         </ol>
         <div class="callout"><p>如果你的账号不支持自动资源创建，请使用命令行方式，它会显式查找或创建命名资源。</p></div>
       </section>
@@ -54,11 +54,10 @@
         <pre><code>git clone https://github.com/tenfyzhong/img-hub.git
 cd img-hub
 ./deploy.sh</code></pre>
-        <p>脚本按需打开 Wrangler 登录，创建或复用 <code>img-hub-db</code>、<code>img-hub-files</code> 与 managed Turnstile Widget，应用 migration，为 <code>users/</code> 安装 91 天规则，把 Widget 私钥写入 Worker Secret，并部署应用。</p>
-        <h3>自定义名称、区域和保留时间</h3>
+        <p>脚本按需打开 Wrangler 登录，创建或复用 <code>img-hub-db</code>、<code>img-hub-files</code> 与 managed Turnstile Widget，应用初始 D1 schema，把 Widget 私钥写入 Worker Secret，并部署每日保留任务。</p>
+        <h3>自定义名称和区域</h3>
         <pre><code>IMG_HUB_DATABASE_NAME=my-hub-db \
 IMG_HUB_BUCKET_NAME=my-hub-files \
-IMG_HUB_RETENTION_DAYS=180 \
 IMG_HUB_D1_LOCATION=apac \
 IMG_HUB_R2_LOCATION=apac \
 IMG_HUB_TURNSTILE_DOMAINS=images.example.com \
@@ -70,20 +69,20 @@ IMG_HUB_TURNSTILE_DOMAINS=images.example.com \
         <h2>GitHub Actions 部署</h2>
         <ol>
           <li>需要 <strong>Sync fork</strong> 更新时 Fork 仓库；需要独立历史时从模板创建。维护者需要先在 <strong>Settings → General → Template repository</strong> 开启模板选项。</li>
-          <li>创建可编辑 Worker Scripts、D1、R2 与 Turnstile 的 Cloudflare Token。生命周期操作需要 <strong>Workers R2 Storage Write</strong>，自动验证配置需要 <strong>Turnstile Sites Write</strong>。</li>
+          <li>创建可编辑 Worker Scripts、D1、R2 与 Turnstile 的 Cloudflare Token。自动验证配置需要 <strong>Turnstile Sites Write</strong>。</li>
           <li>添加 Action Secrets：<code>CLOUDFLARE_API_TOKEN</code> 和 <code>CLOUDFLARE_ACCOUNT_ID</code>。</li>
           <li>手工运行 <strong>Deploy to Cloudflare</strong>，或推送到 <code>main</code>。</li>
         </ol>
         <p><code>main</code> 始终稳定且可部署，开发代码通过 <code>develop</code> 集成。无 Secret 的 CI 验证 PR，每次 <code>main</code> 更新都运行稳定构建。分支保护和发布流程见<a href="https://github.com/tenfyzhong/img-hub/blob/main/CONTRIBUTING.zh-CN.md">贡献指南</a>。</p>
         <p>同一份部署 workflow 适用于原仓库与每个 fork。每个仓库使用自己的 Secrets，所以只会部署到仓库所有者自己的 Cloudflare 账号。默认前缀 <code>img-hub-{repository-id}</code> 可避免不同仓库的 Worker、D1、R2 重名；可用 Repository Variable <code>IMG_HUB_RESOURCE_PREFIX</code> 覆盖。</p>
-        <p>稳定工作流先测试和构建，然后初始化 D1/R2/Turnstile、应用 migration、设置默认 91 天生命周期规则，并带 Turnstile Secret 部署。未配置 Cloudflare Secrets 时会明确跳过部署，而不是让 Fork 的验证失败。Fork 用户先启用一次 Actions，保持 <code>main</code> 没有自定义提交，再使用 <strong>Sync fork → Update branch</strong>；模板创建的仓库没有该同步关系。</p>
+        <p>稳定工作流先测试和构建，然后初始化 D1/R2/Turnstile、应用初始 D1 schema，并带每日保留任务和 Turnstile Secret 部署。未配置 Cloudflare Secrets 时会明确跳过部署，而不是让 Fork 的验证失败。Fork 用户先启用一次 Actions，保持 <code>main</code> 没有自定义提交，再使用 <strong>Sync fork → Update branch</strong>；模板创建的仓库没有该同步关系。</p>
         <h3>发布本指引</h3>
         <p>在仓库 <strong>Settings → Pages</strong> 中把 Source 设为 <strong>GitHub Actions</strong>。Pages workflow 会发布 <code>docs/</code> 下的中英文页面。</p>
       </section>
 
       <section id="api-keys">
         <h2>API Key 与 Agent Skill</h2>
-        <p>完成临时密码修改后，打开侧边栏 <strong>安全</strong> 下方独立的 <strong>API Key</strong> 菜单并创建带名称的 Key。多个 Key 只会在独立页面向下展开，不会影响密码表单的位置。请立即复制只显示一次的 <code>imh_...</code>；系统只保存哈希。Key 可撤销、可设置过期时间，且只能访问所属用户自己的文件和文本。</p>
+        <p>完成临时密码修改后，打开侧边栏 <strong>安全</strong> 下方独立且全宽的 <strong>API Key</strong> 菜单并创建带名称的 Key；修改密码卡片同样占满内容行。多个 Key 只会在独立页面向下展开，不会影响密码表单的位置。请立即复制只显示一次的 <code>imh_...</code>；系统只保存哈希。Key 可撤销、可设置过期时间，且只能访问所属用户自己的文件和文本。</p>
         <p>把 <code>skills/img-hub</code> 复制到 AI Agent 的 skills 目录，并为 Agent 进程配置：</p>
         <pre><code>export IMG_HUB_URL=https://images.example.com
 export IMG_HUB_API_KEY=imh_your_key_shown_once</code></pre>
@@ -118,7 +117,7 @@ npm run build:extension</code></pre>
           <li>用户可以用临时密码登录，但修改密码前不能操作文件或文本。</li>
           <li>管理员重置密码会撤销该用户所有会话，并再次要求首次改密。</li>
         </ol>
-        <p>密码保存为带盐 PBKDF2-SHA-256 哈希。D1 只保存 session token 哈希；HTTPS 下 Cookie 启用 HttpOnly、SameSite=Strict 和 Secure。</p>
+        <p>密码保存为带盐 PBKDF2-SHA-256 哈希。浏览器访问 Session 有效期为 7 天，轮换式 refresh Session 有效期为 30 天。访问 Session 过期时，网页会自动使用 HttpOnly refresh Cookie 换取新凭据并废弃旧 token；连续 30 天没有刷新则必须重新输入密码。D1 只保存 token 哈希；两个 Cookie 都使用 SameSite=Strict，HTTPS 下启用 Secure。</p>
         <p>相同规范化用户名与 Cloudflare 客户端 IP 在 15 分钟内发生 3 次失败登录后，会按需显示 Turnstile。Worker 会校验一次性 Token 的 <code>login</code> action 与当前主机名。D1 只保存 SHA-256 尝试标识和计数；成功登录后立即清除。</p>
       </section>
 
@@ -142,25 +141,26 @@ npm run admin:reset -- --remote --database YOUR_D1_DATABASE_NAME</code></pre>
       <section id="moderation">
         <h2>管理端地址、内容审计与禁用账户</h2>
         <p>系统没有单独的 <code>/admin</code> 地址。打开站点根地址，例如 <code>http://localhost:8787</code>，使用用户名 <code>admin</code> 登录后选择 <strong>管理</strong>。全新数据库会在同一地址显示设置并确认密码的管理员初始化。如果本地没有出现初始化，说明持久化目录 <code>.wrangler/state/</code> 已有账号：需要保留数据时使用 <code>npm run admin:reset</code>；需要清除本地测试状态时，先停止服务再运行 <code>npm run local:reset</code>。</p>
-        <p><strong>内容审计</strong> 会显示所有资源的上传者、公开链接、类型、时间和状态。封禁会永久删除 R2 源对象；即使链接已命中缓存也会返回 404；资源会从上传者列表隐藏，但审计墓碑继续保留。</p>
+        <p><strong>内容审计</strong> 与 <strong>用户管理</strong> 是两个独立的管理员菜单，列表都由服务端搜索和分页。用户搜索占满一行，<strong>创建用户</strong> 从右侧抽屉打开。审计可按文件名、公开 ID、上传者、目录和类型搜索。封禁会永久删除 R2 源对象；即使链接已命中缓存也会返回 404；资源会从上传者列表隐藏，但审计墓碑继续保留。</p>
         <p><strong>禁用账户</strong> 会撤销该用户的 Session 与 API Key，拒绝登录，并停止访问该账户的全部资源。重新启用允许重新登录，但不会恢复旧凭据。管理员账户不能被禁用。</p>
       </section>
 
       <section id="lifecycle">
-        <h2>R2 Object Lifecycle Rules</h2>
-        <p>管理员表单需要 Cloudflare Account ID、bucket 名称和带 Workers R2 Storage Write 权限的 Token。系统先读取现有配置，只替换 <code>img-hub-default-expiration</code>，其他规则保持不变。</p>
-        <p>默认值为 91 天，作用于 <code>users/</code>。Token 不会保存。请使用权限最小、有效期较短的 Token；缩短保留时间前先备份，因为生命周期删除不可恢复。</p>
+        <h2>R2 保留策略</h2>
+        <p>管理员在 <strong>站点设置</strong> 中填写 1–3650 天，配置保存在 D1，默认值为 91。部署后的 Worker 每日运行定时任务，通过 R2 binding 只列出 <code>users/</code> 下的对象并删除到期内容。</p>
+        <p>部署时只移除早期开发版本的固定 <code>img-hub-default-expiration</code> 规则，其他 bucket lifecycle rule 保持不变。</p>
+        <p>网站不会要求填写 Cloudflare Account ID、bucket 名称或 API Token，也不会保存运行时管理 Token。缩短保留时间前请先备份 D1 和 R2，因为删除不可恢复。</p>
       </section>
 
       <section id="paths">
         <h2>隔离、路径与替换</h2>
-        <pre><code>users/{user-id}/file/trips/lake.png
+        <pre><code>users/{user-id}/file/trips/lake-20260806T040506123.png
 /file/pub_7b62f18c6d304476a5edc8a4de176cb1?v=1
 
-users/{user-id}/text/notes/hello.txt
+users/{user-id}/text/notes/hello-20260806T040506123.md
 /text/pub_91ac1f75e0c84353bb9eca92c4f828a0?v=1</code></pre>
         <p>每个用户 ID 都有独立的内部 file/text 根目录；新公开链接只包含 D1 映射的随机 ID，不暴露用户名、目录或文件名。旧链接继续兼容读取。替换保留 object key 和随机公开路径，只递增 D1 version 并返回新的 <code>?v=</code>。</p>
-        <p><strong>上传</strong> 菜单提供等高的上传文件、发布文本与文件外链三个页签，文件外链位于最后。外链导入支持图片、文档、压缩包、音视频、文本及其他 HTTP(S) 文件，并继续执行私网地址和大小检查。放大的投放区可以点击打开文件选择器，也可接收拖入文件、粘贴的文件和剪贴板图片；粘贴后立即上传并显示进度。外链导入会实时显示已抓取字节和百分比；来源未提供长度时使用不确定进度条，并在抓取结束后提示保存到存储的阶段。独立的 <strong>文件管理</strong> 菜单把文件和文本混排在同一个资源列表和根目录树中，不再按类型切换，并支持目录筛选、网格/列表视图、复制 URL/Markdown/HTML、替换与删除。文本支持纯文本、Markdown 与受限富文本，两种编辑框尺寸一致；时间轴会持久记录上传、导入、替换和删除。</p>
+        <p><strong>上传发布</strong> 菜单提供等高的上传文件、发布文本与文件外链三个页签，文件外链位于最后。新文件和文本名称会加入毫秒级 UTC 时间戳；文本名留空时按格式自动生成，发布结果与文件一样可以复制 URL/Markdown/HTML。直接上传前浏览器会分块计算 MD5；命中同一用户自己的同大小文件后，会复制成独立 R2 对象而不再发送文件。外链导入支持图片、文档、压缩包、音视频、文本及其他 HTTP(S) 文件，并继续执行私网地址和大小检查。放大的投放区可以点击打开文件选择器，也可接收拖入文件、粘贴的文件和剪贴板图片；粘贴后立即上传并显示进度。外链导入会实时显示已抓取字节和百分比；来源未提供长度时使用不确定进度条，并在抓取结束后提示保存到存储的阶段。独立的 <strong>文件管理</strong> 菜单把文件和文本混排在同一个资源列表和根目录树中，不再按类型切换，并支持目录筛选、网格/列表视图、复制 URL/Markdown/HTML、替换与删除。发布文本界面支持 Markdown 与受限富文本，两种编辑框尺寸一致；管理卡片会直接预览文本，并把超大或过长图片限制在卡片内部。时间轴会持久记录上传、导入、替换和删除。</p>
       </section>
 
       <section id="cache">
@@ -171,7 +171,7 @@ users/{user-id}/text/notes/hello.txt
 
       <section id="appearance">
         <h2>管理员站点外观配置</h2>
-        <p>进入 <strong>Administration → Site appearance</strong> 可修改站点标题、标语、欢迎标题和欢迎说明。配置保存在 D1，字段有明确长度限制，并以纯文本渲染；未保存配置的部署自动使用内置默认值。</p>
+        <p>进入独立的管理员 <strong>站点设置</strong> 菜单可修改站点标题、标语、欢迎标题和欢迎说明。配置保存在 D1，字段有明确长度限制，并以纯文本渲染；未保存配置的部署自动使用内置默认值。</p>
       </section>
 
       <section id="local">
@@ -193,8 +193,8 @@ npm run test:local</code></pre>
       <section id="troubleshooting">
         <h2>故障排查</h2>
         <h3>Action 无法创建资源</h3><p>检查两个 Secret、Cloudflare 账号是否一致，以及 Token 是否拥有 Worker Scripts、D1、R2 权限。</p>
-        <h3>生命周期接口返回 403</h3><p>为 bucket 所在账号创建带 Workers R2 Storage Write 的 Token，并检查 Account ID 和 bucket 拼写。</p>
-        <h3>URL 返回 404 但列表仍有记录</h3><p>R2 生命周期与 D1 独立执行；object 到期后，所有者可以在列表中删除失效元数据。</p>
+        <h3>保留任务尚未执行</h3><p>定时后端每天 UTC 03:00 运行。确认 Worker 包含仓库中的 cron trigger，并绑定了预期的本地或远端 R2。</p>
+        <h3>URL 返回 404 但列表仍有记录</h3><p>保留任务与 D1 独立执行；object 到期后，所有者可以在列表中删除失效元数据。</p>
         <h3>替换后仍显示旧内容</h3><p>复制最新返回的 URL。路径不变，但 <code>?v=</code> 必须是最新版本。</p>
       </section>
     </main>

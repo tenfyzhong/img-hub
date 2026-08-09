@@ -14,6 +14,7 @@ test("administrator recovery updates the password and revokes every credential",
     assert.match(sql, /username = 'admin'/);
     assert.match(sql, /username_aliases/);
     assert.match(sql, /administrator_username/);
+    assert.match(sql, /DELETE FROM refresh_sessions[\s\S]*role = 'admin'/);
     assert.match(sql, /DELETE FROM sessions[\s\S]*role = 'admin'/);
     assert.match(sql, /UPDATE api_keys[\s\S]*revoked_at = CURRENT_TIMESTAMP[\s\S]*role = 'admin'/);
     assert.doesNotMatch(sql, /\b(?:BEGIN|COMMIT|SAVEPOINT)\b/);

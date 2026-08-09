@@ -1,5 +1,4 @@
 import { AppError } from "./errors.js";
-import { normalizeDirectory, sanitizeFileName } from "./paths.js";
 
 export function parseCookies(header = "") {
     return Object.fromEntries(header.split(";").map((part) => {
@@ -30,38 +29,27 @@ export function assertSameOrigin(request) {
 
 export function routePublicResource(pathname) {
     const rawParts = pathname.split("/").filter(Boolean);
-    if (!["file", "text"].includes(rawParts[0])) {
+    if (rawParts.length !== 1) {
         return null;
     }
-    try {
-        const parts = rawParts.map((part) => decodeURIComponent(part));
-        if (parts.length === 2 && /^pub_[a-f0-9]{32}$/.test(parts[1])) {
-            return { kind: parts[0], publicId: parts[1] };
-        }
-        if (parts.length < 3) return null;
-        const [kind, username, ...relative] = parts;
-        if (!/^[a-z0-9][a-z0-9_-]{2,31}$/i.test(username)) {
-            return null;
-        }
-        const name = relative.pop();
-        const directory = relative.join("/");
-        if (sanitizeFileName(name) !== name || normalizeDirectory(directory) !== directory) {
-            return null;
-        }
-        return { kind, username, directory, name };
-    } catch {
+    if (!/^pub_[a-f0-9]{32}$/.test(rawParts[0])) {
         return null;
     }
+    return { publicId: rawParts[0] };
 }
 
 export function json(data, status = 200, headers = {}) {
+    const responseHeaders = new Headers({
+        "Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff",
+    });
+    for (const [name, rawValue] of Object.entries(headers)) {
+        const values = Array.isArray(rawValue) ? rawValue : [rawValue];
+        for (const value of values) responseHeaders.append(name, value);
+    }
     return Response.json(data, {
         status,
-        headers: {
-            "Cache-Control": "no-store",
-            "X-Content-Type-Options": "nosniff",
-            ...headers,
-        },
+        headers: responseHeaders,
     });
 }
 

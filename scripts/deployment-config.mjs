@@ -36,6 +36,7 @@ export function createDeploymentConfig({
             not_found_handling: "single-page-application",
             run_worker_first: ["/api/*", "/file/*", "/text/*"],
         },
+        triggers: { crons: ["0 3 * * *"] },
         observability: { enabled: true },
     };
 }

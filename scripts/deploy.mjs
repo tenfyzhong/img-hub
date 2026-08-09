@@ -16,13 +16,8 @@ import {
 } from "./turnstile-wrangler.mjs";
 
 const { databaseName, bucketName, workerName } = resolveResourceNames(process.env);
-const retentionDays = Number(process.env.IMG_HUB_RETENTION_DAYS || 91);
 const generatedConfig = "wrangler.generated.json";
 const executable = process.platform === "win32" ? "npx.cmd" : "npx";
-
-if (!Number.isInteger(retentionDays) || retentionDays < 1 || retentionDays > 3650) {
-    throw new Error("IMG_HUB_RETENTION_DAYS must be an integer between 1 and 3650");
-}
 
 function wrangler(args, { capture = false, allowFailure = false, silent = false } = {}) {
     const result = spawnSync(executable, ["--no-install", "wrangler", ...args], {
@@ -74,7 +69,13 @@ if (!bucket.ok) {
     wrangler(["r2", "bucket", "create", bucketName, ...locationArguments]);
 }
 
-console.log("[4/8] Generating Cloudflare bindings");
+console.log("[4/8] Removing the legacy fixed R2 lifecycle rule if present");
+wrangler([
+    "r2", "bucket", "lifecycle", "remove", bucketName,
+    "--id", "img-hub-default-expiration",
+], { allowFailure: true, silent: true });
+
+console.log("[5/8] Generating Cloudflare bindings");
 let config = createDeploymentConfig({
     databaseId,
     databaseName,
@@ -83,19 +84,8 @@ let config = createDeploymentConfig({
 });
 writeFileSync(generatedConfig, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
 
-console.log("[5/8] Applying D1 migrations");
+console.log("[6/8] Applying D1 migrations");
 wrangler(["d1", "migrations", "apply", "DB", "--remote", "--config", generatedConfig]);
-
-console.log(`[6/8] Setting the managed R2 lifecycle rule to ${retentionDays} days`);
-wrangler([
-    "r2", "bucket", "lifecycle", "remove", bucketName,
-    "--id", "img-hub-default-expiration",
-], { allowFailure: true, silent: true });
-wrangler([
-    "r2", "bucket", "lifecycle", "add", bucketName,
-    "img-hub-default-expiration", "users/",
-    "--expire-days", String(retentionDays), "--force",
-]);
 
 console.log("[7/8] Provisioning Cloudflare Turnstile login verification");
 let turnstileDomains = normalizeTurnstileDomains(process.env.IMG_HUB_TURNSTILE_DOMAINS);

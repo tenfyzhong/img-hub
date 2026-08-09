@@ -20,6 +20,13 @@ const SCHEMA_STATEMENTS = [
         expires_at TEXT NOT NULL,
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )`,
+    `CREATE TABLE IF NOT EXISTS refresh_sessions (
+        token_hash TEXT PRIMARY KEY,
+        access_token_hash TEXT NOT NULL REFERENCES sessions(token_hash) ON DELETE CASCADE,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        expires_at TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
     `CREATE TABLE IF NOT EXISTS login_challenges (
         identifier_hash TEXT PRIMARY KEY,
         failed_count INTEGER NOT NULL DEFAULT 0,
@@ -46,7 +53,7 @@ const SCHEMA_STATEMENTS = [
         name TEXT NOT NULL,
         content_type TEXT NOT NULL,
         size INTEGER NOT NULL DEFAULT 0,
-        version INTEGER NOT NULL DEFAULT 1,
+        version INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(created_by, kind, directory, name)
@@ -55,6 +62,11 @@ const SCHEMA_STATEMENTS = [
         resource_id TEXT PRIMARY KEY REFERENCES resources(id) ON DELETE CASCADE,
         public_id TEXT NOT NULL UNIQUE,
         text_format TEXT NOT NULL DEFAULT 'plain' CHECK(text_format IN ('plain', 'markdown', 'rich'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS resource_hashes (
+        resource_id TEXT PRIMARY KEY REFERENCES resources(id) ON DELETE CASCADE,
+        created_by TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        content_md5 TEXT NOT NULL CHECK(length(content_md5) = 32)
     )`,
     `CREATE TABLE IF NOT EXISTS resource_moderation (
         resource_id TEXT PRIMARY KEY REFERENCES resources(id) ON DELETE CASCADE,
@@ -115,9 +127,11 @@ const SCHEMA_STATEMENTS = [
             )`,
     "CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id)",
     "CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at)",
+    "CREATE INDEX IF NOT EXISTS idx_refresh_sessions_user_id ON refresh_sessions(user_id, expires_at)",
     "CREATE INDEX IF NOT EXISTS idx_login_challenges_updated_at ON login_challenges(updated_at)",
     "CREATE INDEX IF NOT EXISTS idx_api_keys_user_id ON api_keys(user_id, created_at DESC)",
     "CREATE INDEX IF NOT EXISTS idx_resources_owner_kind ON resources(created_by, kind, updated_at DESC)",
+    "CREATE INDEX IF NOT EXISTS idx_resource_hashes_owner_md5 ON resource_hashes(created_by, content_md5)",
     "CREATE INDEX IF NOT EXISTS idx_resources_moderation ON resource_moderation(blocked_at DESC)",
     "CREATE UNIQUE INDEX IF NOT EXISTS idx_resources_public_id ON resource_sharing(public_id)",
     "CREATE INDEX IF NOT EXISTS idx_resource_events_owner_time ON resource_events(created_by, created_at DESC)",

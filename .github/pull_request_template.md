@@ -24,7 +24,7 @@ Manual test steps and results:
 
 - [ ] User ownership and per-user R2 isolation remain enforced.
 - [ ] No password, API key, token, cookie, private URL, or user data is included.
-- [ ] I documented any migration, cache, deployment, lifecycle, or compatibility impact.
+- [ ] I documented any migration, cache, deployment, retention, or compatibility impact.
 - [ ] English and Chinese documentation remain aligned when user-facing behavior changed.
 - [ ] All commits are signed off with `git commit -s`.
 

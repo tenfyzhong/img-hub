@@ -91,7 +91,7 @@ test/admin-recovery.test.js    deployment-owner administrator recovery
 test/api-keys.test.js          API key creation, hashing, expiry, and revocation
 test/resources.test.js         ownership, upload, text, replacement, and deletion
 test/public-cache.test.js      versioned public read cache behavior
-test/lifecycle.test.js         Cloudflare R2 lifecycle request behavior
+test/lifecycle.test.js         administrator retention and scheduled R2 cleanup
 test/site-settings.test.js     administrator site appearance settings
 test/frontend.test.js          browser application contract
 test/i18n.test.js              language selection and translation catalogs
@@ -124,7 +124,7 @@ npm run local:reset
 
 This is destructive to local test accounts and objects. It must remove only this checkout's `.wrangler/state/` and must never target deployed resources or a broad filesystem path.
 
-Follow the manual checklist in `CONTRIBUTING.md` or `CONTRIBUTING.zh-CN.md` for user-visible changes. Do not submit the local **R2 retention** form during offline testing: that endpoint intentionally calls the real Cloudflare lifecycle API. Use `test/lifecycle.test.js` unless a user explicitly authorizes a disposable live integration test.
+Follow the manual checklist in `CONTRIBUTING.md` or `CONTRIBUTING.zh-CN.md` for user-visible changes. Do not invoke the scheduled retention task against deployed R2 data during routine testing. Use `test/lifecycle.test.js` or an explicitly isolated local Wrangler state unless a user authorizes disposable live data.
 
 ## Architecture map
 
@@ -137,13 +137,16 @@ src/login-protection.js         hashed login-failure windows and challenge enfor
 src/turnstile.js                server-side Turnstile Siteverify validation
 src/user-service.js             administrator and password management
 src/api-key-service.js          API key lifecycle and authentication
+src/retention-service.js        administrator retention and scheduled R2 cleanup
 src/resource-service.js         owned R2 file/text operations
+src/resource-name.js            timestamped and generated resource names
+src/pagination.js               bounded administrator paging/search helpers
 src/public-resource.js          public responses and Cache API integration
 src/site-settings-service.js    public/admin appearance settings
-src/lifecycle.js                Cloudflare R2 lifecycle API integration
 src/http.js / src/paths.js      HTTP guards, routes, names, and path safety
 public/                         dependency-free browser UI
 public/i18n.js                  English/Chinese catalogs and locale selection
+public/md5.js                   incremental browser upload hashing
 migrations/                     deploy-time D1 migrations
 extension/                      generic cross-browser extension source/build
 skills/img-hub/                 distributable agent skill and Python client
@@ -151,7 +154,7 @@ scripts/                        provisioning, deployment, reset, and publishing
 .github/workflows/              CI, stable deployment, release, and Pages
 ```
 
-Keep route handling thin. Put reusable authorization, validation, persistence, object, cache, and lifecycle behavior in the corresponding modules so it remains unit-testable.
+Keep route handling thin. Put reusable authorization, validation, persistence, object, cache, and retention behavior in the corresponding modules so it remains unit-testable.
 
 ## Data and security invariants
 
@@ -162,7 +165,7 @@ Keep route handling thin. Put reusable authorization, validation, persistence, o
 - There is no default administrator password, public password-recovery endpoint, email reset, or backdoor.
 - Administrator-assigned and reset passwords set `mustChangePassword`.
 - Users with a temporary password cannot manage content or create API keys until changing it.
-- Passwords are salted hashes. Session and API key cleartext values must never be persisted.
+- Passwords are salted hashes. Access sessions last 7 days; browser refresh sessions last 30 days, rotate on use, and are accepted only from an HttpOnly same-site cookie. Session, refresh, and API key cleartext values must never be persisted.
 - Resetting a password revokes the user's sessions and API keys.
 - Deployment-owner recovery uses `scripts/reset-admin-password.mjs`; remote recovery requires an explicit database name, stores only a new hash, revokes administrator sessions/API keys, and forces a different password after login.
 - Browser-only security operations must continue to require an appropriate login session.
@@ -177,6 +180,8 @@ Keep route handling thin. Put reusable authorization, validation, persistence, o
 - R2 keys are isolated beneath `users/{user-id}/file/` and `users/{user-id}/text/`.
 - New public routes are `/file/{opaque-public-id}` and `/text/{opaque-public-id}`; generated URLs must not expose usernames, internal directories, or file names. Keep legacy username routes read-only for compatibility.
 - `resource_sharing` owns opaque public IDs and text formats so schema initialization remains idempotent across Deploy button, CLI, and GitHub deployment paths.
+- New file and text names contain millisecond UTC timestamps; a blank text name is generated from its format.
+- `resource_hashes` stores owner-scoped MD5 metadata for instant upload. Never match another user's hash, and always copy a match into an independent R2 object so replacement, deletion, moderation, and retention remain resource-local.
 - Resource activity events must survive resource deletion and remain owner-scoped.
 - Directory and filename validation must reject traversal, ambiguous separators, and unsafe empty segments.
 - Duplicate creation must not overwrite or delete an existing R2 object.
@@ -188,8 +193,8 @@ Keep route handling thin. Put reusable authorization, validation, persistence, o
 ### D1 schema
 
 - Runtime schema initialization in `src/schema.js` must remain idempotent.
-- Deploy-time migrations under `migrations/` must represent applicable schema changes.
-- Update both paths when adding a table, column, index, constraint, or trigger.
+- Before the first public release, `migrations/0001_initial.sql` is the only migration file. Fold every schema change into it and update runtime initialization at the same time.
+- Do not add incremental migration files until a released schema requires backward-compatible upgrades.
 - Preserve foreign keys, ownership indexes, uniqueness constraints, and the single-administrator invariant.
 
 ### Public caching
@@ -200,13 +205,14 @@ Keep route handling thin. Put reusable authorization, validation, persistence, o
 - Unversioned, malformed, mismatched, extra-query, and HEAD requests use `BYPASS` and must not grow persistent cache keys.
 - Replacement returns a new version URL so the stable path can retrieve new content without purging the previous key.
 
-### Settings and lifecycle
+### Settings and retention
 
 - Site appearance values are administrator-controlled, length-validated, stored in D1, and rendered as text rather than HTML.
-- The managed R2 lifecycle rule defaults to 91 days and applies to `users/`.
-- Preserve unrelated Object Lifecycle Rules.
-- Cloudflare API tokens used for lifecycle configuration must not be stored or logged.
-- Lifecycle deletion is irreversible; do not perform a live update without explicit authorization.
+- Administrators configure an integer retention period from 1 to 3650 days in Site settings; it is stored in D1 and defaults to 91 days.
+- The deployed Worker's daily scheduled task enforces retention through the bound R2 bucket and must only list or delete keys below `users/`.
+- Deployment may remove the obsolete managed `img-hub-default-expiration` rule but must preserve every unrelated bucket lifecycle rule.
+- The browser application must not request an Account ID, bucket name, or Cloudflare API token for retention. Deployment credentials must not be copied into Worker runtime storage or logs.
+- Retention deletion is irreversible; test with R2 doubles or isolated local data unless live disposable data is explicitly authorized.
 
 ## Browser extension and Agent Skill
 
@@ -233,7 +239,7 @@ Keep route handling thin. Put reusable authorization, validation, persistence, o
 ## Cloudflare configuration and deployment
 
 - Default `wrangler.jsonc` bindings must stay local-capable and must not set D1 or R2 `remote: true`.
-- `scripts/deploy.mjs` must provision or reuse D1 and R2 idempotently, apply migrations, preserve unrelated lifecycle rules, and deploy only after explicit invocation.
+- `scripts/deploy.mjs` must provision or reuse D1 and R2 idempotently, apply the initial schema, include the scheduled retention trigger, and deploy only after explicit invocation.
 - The shared deployment path must create or reuse its managed Turnstile widget through Wrangler, add the deployed/custom hostnames, and inject the secret with `--secrets-file` without logging or persisting it.
 - Resource names must remain repository-specific by default so the upstream repository and forks do not collide.
 - `ci.yml` is secret-free and validates pull requests to `develop`/`main` plus pushes to `develop`.

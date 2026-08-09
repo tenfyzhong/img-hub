@@ -142,6 +142,7 @@ export async function buildExtensionPackages({
     for (const browser of ["chromium", "firefox"]) {
         const browserDirectory = join(outputDirectory, browser);
         await cp(sourceDirectory, browserDirectory, { recursive: true });
+        await cp(join(projectDirectory, "public", "md5.js"), join(browserDirectory, "md5.js"));
         await writeIcons(browserDirectory);
         await writeFile(
             join(browserDirectory, "manifest.json"),
