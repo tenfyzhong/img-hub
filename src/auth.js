@@ -3,7 +3,7 @@ import { AppError } from "./errors.js";
 const encoder = new TextEncoder();
 const PASSWORD_ALGORITHM = "PBKDF2";
 const PASSWORD_DIGEST = "SHA-256";
-const PASSWORD_ITERATIONS = 210000;
+const PASSWORD_ITERATIONS = 100000;
 
 function encodeBase64Url(bytes) {
     let binary = "";

@@ -14,6 +14,7 @@ test("password hashes are salted and verifiable", async () => {
     const second = await hashPassword("correct horse battery staple");
 
     assert.match(first, /^pbkdf2-sha256\$\d+\$[A-Za-z0-9_-]+\$[A-Za-z0-9_-]+$/);
+    assert.equal(Number(first.split("$")[1]), 100000);
     assert.notEqual(first, second);
     assert.equal(await verifyPassword("correct horse battery staple", first), true);
     assert.equal(await verifyPassword("wrong password", first), false);
