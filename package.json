@@ -1,6 +1,6 @@
 {
   "name": "img-hub",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -12,6 +12,7 @@
     "admin:reset": "node scripts/reset-admin-password.mjs",
     "deploy": "node scripts/deploy.mjs",
     "deploy:cloudflare": "node scripts/deploy.mjs",
+    "destroy:cloudflare": "node scripts/destroy-cloudflare.mjs",
     "check:deploy": "wrangler deploy --dry-run",
     "build:extension": "node extension/scripts/build.mjs",
     "publish:extension": "node scripts/publish-extensions.mjs"

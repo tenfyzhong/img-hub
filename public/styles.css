@@ -231,6 +231,12 @@ button { border: 0; cursor: pointer; }
 .user-row small { color: var(--muted); }
 .secondary { padding: 7px 10px; border-radius: 8px; color: var(--moss-dark); background: rgba(49, 92, 73, 0.1); font-size: 11px; font-weight: 800; }
 .secondary:disabled { cursor: default; opacity: .45; }
+.password-tools button.copy-success { animation: password-copy-success 600ms cubic-bezier(.2, .8, .2, 1); }
+@keyframes password-copy-success {
+  0%, 100% { transform: scale(1); box-shadow: none; }
+  35% { transform: scale(.94); color: var(--moss-dark); background: rgba(242, 166, 90, .34); box-shadow: 0 0 0 4px rgba(242, 166, 90, .16); }
+  68% { transform: scale(1.06); color: white; background: var(--moss); box-shadow: 0 6px 18px rgba(49, 92, 73, .22); }
+}
 
 .management-surface { padding: 24px; }
 .management-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: end; margin: 22px 0 8px; }

@@ -13,7 +13,8 @@ test("English and Chinese guides cover every supported deployment path", async (
         assert.match(guide, /CLOUDFLARE_API_TOKEN/);
         assert.match(guide, /CLOUDFLARE_ACCOUNT_ID/);
         assert.match(guide, /91/);
-        assert.match(guide, /\/file\/.*\/text\//s);
+        assert.match(guide, /\/pub\/[0-9a-f]/);
+        assert.doesNotMatch(guide, /\/(?:file|text)\/pub_/);
         assert.match(guide, /\?v=/);
         assert.match(guide, /IMG_HUB_API_KEY/);
         assert.match(guide, /IMG_HUB_URL/);

@@ -27,7 +27,13 @@ test("generated deployment config binds the provisioned D1 and R2 resources", ()
     assert.equal(config.d1_databases[0].database_id, "db-id");
     assert.equal(config.r2_buckets[0].binding, "BUCKET");
     assert.equal(config.r2_buckets[0].bucket_name, "img-hub-files");
-    assert.equal(config.assets.run_worker_first[0], "/api/*");
+    assert.deepEqual(config.assets.run_worker_first, [
+        "/api/*",
+        "/pub/*",
+        "/file/*",
+        "/text/*",
+        "/pub_*",
+    ]);
     assert.deepEqual(config.triggers.crons, ["0 3 * * *"]);
     assert.equal(config.vars.TURNSTILE_SITE_KEY, "0x-site-key");
     assert.equal(config.vars.TURNSTILE_SECRET_KEY, undefined);

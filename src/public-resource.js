@@ -1,3 +1,6 @@
+import { publicNotFound } from "./not-found-page.js";
+import { renderTextContent } from "./text-format.js";
+
 function cacheStatus(response, value) {
     const headers = new Headers(response.headers);
     headers.set("X-ImgHub-Cache", value);
@@ -54,7 +57,7 @@ export async function servePublicResource({
     const candidate = cacheCandidate(request);
     const resource = await repository.findByPublicId(route.publicId);
     if (!resource) {
-        return new Response("Not found", { status: 404 });
+        return publicNotFound(request);
     }
     if (candidate && cache) {
         try {
@@ -69,7 +72,7 @@ export async function servePublicResource({
         ? await bucket.head(resource.objectKey)
         : await bucket.get(resource.objectKey);
     if (!object) {
-        return new Response("Not found", { status: 404 });
+        return publicNotFound(request);
     }
 
     const cacheable = Boolean(candidate && cache && candidate.version === resource.version);
@@ -96,4 +99,3 @@ export async function servePublicResource({
     }
     return cacheStatus(response, "MISS");
 }
-import { renderTextContent } from "./text-format.js";

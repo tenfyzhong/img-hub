@@ -32,9 +32,16 @@ test("rejects cross-origin state-changing requests", () => {
 });
 
 test("routes opaque public resource URLs", () => {
-    const publicId = "pub_0123456789abcdef0123456789abcdef";
-    assert.deepEqual(routePublicResource(`/${publicId}`), { publicId });
+    const publicId = "0123456789abcdef0123456789abcdef";
+    assert.deepEqual(routePublicResource(`/pub/${publicId}`), { publicId });
+    assert.equal(routePublicResource(`/pub/pub_${publicId}`), null);
+    assert.equal(routePublicResource(`/file/${publicId}`), null);
+    assert.equal(routePublicResource(`/text/${publicId}`), null);
+    assert.equal(routePublicResource(`/${publicId}`), null);
+    assert.equal(routePublicResource(`/pub/${publicId}/extra`), null);
+    assert.equal(routePublicResource("/pub/something"), null);
     assert.equal(routePublicResource("/file/something"), null);
+    assert.equal(routePublicResource(`/image/${publicId}`), null);
     assert.equal(routePublicResource("/api/files"), null);
     assert.equal(routePublicResource("/not-a-public-id"), null);
 });
