@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" role="img">
+  <title>Cloudflare dashboard illustration showing how to start a custom API token for ImgHub</title>
+  <defs>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="12" stdDeviation="18" flood-color="#102019" flood-opacity="0.14"/>
+    </filter>
+  </defs>
+  <rect width="1280" height="720" fill="#eef1f3"/>
+  <rect x="40" y="34" width="1200" height="652" rx="18" fill="#ffffff" filter="url(#shadow)"/>
+  <rect x="40" y="34" width="1200" height="64" rx="18" fill="#f8fafb"/>
+  <rect x="40" y="80" width="1200" height="18" fill="#f8fafb"/>
+  <circle cx="78" cy="66" r="9" fill="#ff6633"/>
+  <text x="100" y="74" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700" fill="#172b35">Cloudflare dashboard</text>
+  <circle cx="1168" cy="66" r="18" fill="#dce5e8"/>
+  <text x="1168" y="73" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="700" fill="#49606a">A</text>
+
+  <rect x="40" y="98" width="240" height="588" fill="#f7f9fa"/>
+  <text x="72" y="142" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" fill="#71838b">MY PROFILE</text>
+  <text x="72" y="188" font-family="Inter, Arial, sans-serif" font-size="17" fill="#48616b">Preferences</text>
+  <text x="72" y="230" font-family="Inter, Arial, sans-serif" font-size="17" fill="#48616b">Authentication</text>
+  <rect x="56" y="248" width="208" height="46" rx="8" fill="#fff1eb"/>
+  <rect x="56" y="248" width="4" height="46" rx="2" fill="#f48120"/>
+  <text x="72" y="277" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="700" fill="#9c3d12">API Tokens</text>
+
+  <text x="322" y="146" font-family="Inter, Arial, sans-serif" font-size="14" fill="#71838b">My Profile  /  API Tokens</text>
+  <text x="322" y="194" font-family="Inter, Arial, sans-serif" font-size="32" font-weight="700" fill="#172b35">API Tokens</text>
+  <text x="322" y="226" font-family="Inter, Arial, sans-serif" font-size="16" fill="#60747d">Create a scoped token for automated deployment. Do not use the Global API Key.</text>
+  <rect x="1020" y="166" width="166" height="48" rx="8" fill="#f48120"/>
+  <text x="1103" y="197" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="700" fill="#ffffff">Create Token</text>
+
+  <rect x="322" y="266" width="864" height="124" rx="12" fill="#ffffff" stroke="#d5dee2"/>
+  <text x="350" y="304" font-family="Inter, Arial, sans-serif" font-size="19" font-weight="700" fill="#172b35">API token templates</text>
+  <text x="350" y="336" font-family="Inter, Arial, sans-serif" font-size="15" fill="#60747d">Built-in templates grant a broad baseline. ImgHub uses a smaller custom set.</text>
+  <rect x="948" y="302" width="208" height="44" rx="7" fill="#ffffff" stroke="#9fb0b7"/>
+  <text x="1052" y="330" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700" fill="#344d57">Use template</text>
+
+  <rect x="322" y="414" width="864" height="164" rx="12" fill="#fff8f4" stroke="#f48120" stroke-width="2"/>
+  <circle cx="362" cy="454" r="22" fill="#f48120"/>
+  <text x="362" y="462" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="800" fill="#ffffff">1</text>
+  <text x="398" y="462" font-family="Inter, Arial, sans-serif" font-size="21" font-weight="750" fill="#172b35">Create Custom Token</text>
+  <text x="350" y="505" font-family="Inter, Arial, sans-serif" font-size="16" fill="#536b74">Recommended for ImgHub: add only the seven permissions shown in the next screen.</text>
+  <rect x="916" y="510" width="240" height="46" rx="8" fill="#f48120"/>
+  <text x="1036" y="539" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="750" fill="#ffffff">Get started</text>
+
+  <rect x="322" y="606" width="864" height="50" rx="10" fill="#edf6f2"/>
+  <text x="346" y="637" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="650" fill="#315c49">✓ Least privilege: Custom Token — not Global API Key, not a broad all-account token</text>
+</svg>

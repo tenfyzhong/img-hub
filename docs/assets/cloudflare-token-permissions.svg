@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="820" viewBox="0 0 1280 820" role="img">
+  <title>Cloudflare custom API token illustration listing the seven permissions required by ImgHub</title>
+  <defs>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="12" stdDeviation="18" flood-color="#102019" flood-opacity="0.14"/>
+    </filter>
+  </defs>
+  <rect width="1280" height="820" fill="#eef1f3"/>
+  <rect x="40" y="30" width="1200" height="760" rx="18" fill="#ffffff" filter="url(#shadow)"/>
+  <rect x="40" y="30" width="1200" height="64" rx="18" fill="#f8fafb"/>
+  <rect x="40" y="76" width="1200" height="18" fill="#f8fafb"/>
+  <circle cx="78" cy="62" r="9" fill="#ff6633"/>
+  <text x="100" y="70" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700" fill="#172b35">Create Custom Token</text>
+
+  <text x="84" y="142" font-family="Inter, Arial, sans-serif" font-size="14" fill="#71838b">Token name</text>
+  <rect x="84" y="158" width="1112" height="48" rx="8" fill="#ffffff" stroke="#c7d2d7"/>
+  <text x="104" y="188" font-family="Inter, Arial, sans-serif" font-size="16" fill="#344d57">ImgHub GitHub deployment</text>
+  <text x="84" y="252" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="750" fill="#172b35">Permissions</text>
+  <text x="84" y="281" font-family="Inter, Arial, sans-serif" font-size="15" fill="#60747d">Add these seven rows. Dashboard wording may show Edit or Write for the same write permission.</text>
+
+  <rect x="84" y="306" width="1112" height="54" rx="8" fill="#eaf0f2"/>
+  <text x="110" y="339" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="750" fill="#49606a">SCOPE</text>
+  <text x="286" y="339" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="750" fill="#49606a">PERMISSION</text>
+  <text x="1010" y="339" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="750" fill="#49606a">ACCESS</text>
+
+  <g font-family="Inter, Arial, sans-serif" font-size="16" fill="#273f49">
+    <rect x="84" y="360" width="1112" height="54" fill="#ffffff" stroke="#e0e6e8"/>
+    <text x="110" y="393">Account</text><text x="286" y="393">Account Settings</text><text x="1010" y="393" font-weight="700">Read</text>
+    <rect x="84" y="414" width="1112" height="54" fill="#f9fbfb" stroke="#e0e6e8"/>
+    <text x="110" y="447">Account</text><text x="286" y="447">Workers Scripts</text><text x="1010" y="447" font-weight="700" fill="#a64115">Edit</text>
+    <rect x="84" y="468" width="1112" height="54" fill="#ffffff" stroke="#e0e6e8"/>
+    <text x="110" y="501">Account</text><text x="286" y="501">D1</text><text x="1010" y="501" font-weight="700" fill="#a64115">Edit</text>
+    <rect x="84" y="522" width="1112" height="54" fill="#f9fbfb" stroke="#e0e6e8"/>
+    <text x="110" y="555">Account</text><text x="286" y="555">Workers R2 Storage</text><text x="1010" y="555" font-weight="700" fill="#a64115">Edit</text>
+    <rect x="84" y="576" width="1112" height="54" fill="#ffffff" stroke="#e0e6e8"/>
+    <text x="110" y="609">Account</text><text x="286" y="609">Turnstile</text><text x="1010" y="609" font-weight="700" fill="#a64115">Edit</text>
+    <rect x="84" y="630" width="1112" height="54" fill="#f9fbfb" stroke="#e0e6e8"/>
+    <text x="110" y="663">User</text><text x="286" y="663">User Details</text><text x="1010" y="663" font-weight="700">Read</text>
+    <rect x="84" y="684" width="1112" height="54" fill="#ffffff" stroke="#e0e6e8"/>
+    <text x="110" y="717">User</text><text x="286" y="717">Memberships</text><text x="1010" y="717" font-weight="700">Read</text>
+  </g>
+
+  <rect x="84" y="754" width="1112" height="24" rx="4" fill="#edf6f2"/>
+  <text x="104" y="772" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="650" fill="#315c49">No KV, Tail, DNS, or Zone permission is needed for the default workers.dev deployment.</text>
+</svg>

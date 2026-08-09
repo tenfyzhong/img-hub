@@ -19,6 +19,7 @@
         <a href="#choose">Choose a deployment</a>
         <a href="#button">Cloudflare button</a>
         <a href="#cli">CLI deployment</a>
+        <a href="#cloudflare-token">Cloudflare token</a>
         <a href="#github">GitHub Actions</a>
         <a href="#api-keys">API keys &amp; Agent Skill</a>
         <a href="#extension">Browser extension</a>
@@ -84,11 +85,55 @@ IMG_HUB_TURNSTILE_DOMAINS=images.example.com \
         <p>The operation is idempotent and never deletes a D1 database or R2 bucket. The generated <code>workers.dev</code> hostname is detected automatically; <code>IMG_HUB_TURNSTILE_DOMAINS</code> adds comma-separated custom hostnames.</p>
       </section>
 
+      <section id="cloudflare-token">
+        <h2>Create the Cloudflare deployment token</h2>
+        <p>For GitHub Actions, create a <strong>user API token</strong> under <strong>My Profile → API Tokens</strong>. Select <strong>Create Token</strong>, then choose <strong>Create Custom Token</strong>. This is the recommended least-privilege option because no built-in template exactly matches ImgHub. Do not use the legacy <strong>Global API Key</strong>.</p>
+        <figure class="guide-shot">
+          <img src="assets/cloudflare-token-create.svg" alt="Sanitized Cloudflare dashboard illustration highlighting API Tokens, Create Token, and Create Custom Token" loading="lazy" decoding="async">
+          <figcaption>Sanitized interface illustration — account identity and credentials are intentionally omitted. Cloudflare may adjust labels or layout over time.</figcaption>
+        </figure>
+        <p>The faster <strong>Edit Cloudflare Workers</strong> template is broader than ImgHub needs: it includes KV, Tail, and Zone route access while omitting D1 and Turnstile. If you start from that template, remove the unused permissions and add D1 and Turnstile. The custom-token permission set below is clearer and safer.</p>
+
+        <h3>Add exactly these permissions</h3>
+        <div class="table-scroll">
+          <table class="permission-table">
+            <thead><tr><th>Scope</th><th>Permission</th><th>Access</th><th>Why ImgHub needs it</th></tr></thead>
+            <tbody>
+              <tr><td>Account</td><td>Account Settings</td><td>Read</td><td>Let Wrangler identify and validate the selected account.</td></tr>
+              <tr><td>Account</td><td>Workers Scripts</td><td>Edit</td><td>Deploy the Worker, static assets, bindings, schedules, and secrets.</td></tr>
+              <tr><td>Account</td><td>D1</td><td>Edit</td><td>Create or reuse D1 and apply the initial schema.</td></tr>
+              <tr><td>Account</td><td>Workers R2 Storage</td><td>Edit</td><td>Create or reuse the R2 bucket and manage its deployment binding.</td></tr>
+              <tr><td>Account</td><td>Turnstile</td><td>Edit</td><td>Create, read, and update the managed login widget.</td></tr>
+              <tr><td>User</td><td>User Details</td><td>Read</td><td>Allow Wrangler authentication checks.</td></tr>
+              <tr><td>User</td><td>Memberships</td><td>Read</td><td>Allow Wrangler to resolve the user's account membership.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>In compact permission notation, the rows are <strong>Account Settings Read</strong>, <strong>Workers Scripts Edit</strong>, <strong>D1 Edit</strong>, <strong>Workers R2 Storage Edit</strong>, <strong>Turnstile Edit</strong>, <strong>User Details Read</strong>, and <strong>Memberships Read</strong>. Some Cloudflare surfaces show write permissions as <em>Write</em> instead of <em>Edit</em>; for example, <strong>Turnstile Sites Write</strong> is the same required write capability.</p>
+        <figure class="guide-shot">
+          <img src="assets/cloudflare-token-permissions.svg" alt="Sanitized custom token permission screen listing the seven least-privilege ImgHub permissions" loading="lazy" decoding="async">
+          <figcaption>Use the Account group for Workers, D1, R2, Turnstile, and Account Settings; use the User group for identity and membership reads.</figcaption>
+        </figure>
+
+        <h3>Restrict the resource and store the secret once</h3>
+        <ol>
+          <li>Under <strong>Account Resources</strong>, choose <strong>Include → Specific account → your deployment account</strong>. Do not select all accounts unless one repository intentionally manages all of them.</li>
+          <li>The default <code>workers.dev</code> deployment needs no Zone permission. Add <strong>Zone → Workers Routes Edit</strong> only if you later configure a Worker route on a specific zone.</li>
+          <li>Select <strong>Continue to summary</strong>, verify the seven rows and the one account, then select <strong>Create Token</strong>.</li>
+          <li>Copy the secret directly into the GitHub Actions secret <code>CLOUDFLARE_API_TOKEN</code>. Add the selected account's ID separately as <code>CLOUDFLARE_ACCOUNT_ID</code>.</li>
+        </ol>
+        <figure class="guide-shot">
+          <img src="assets/cloudflare-token-scope.svg" alt="Sanitized Cloudflare token screen showing Include Specific account and the two GitHub Actions secret names" loading="lazy" decoding="async">
+          <figcaption>The real secret is displayed once. Never put it in a screenshot, issue, log, README, command argument, or committed environment file.</figcaption>
+        </figure>
+        <div class="callout"><p>Cloudflare's current references are the authoritative source for <a href="https://developers.cloudflare.com/fundamentals/api/get-started/create-token/">token creation</a>, <a href="https://developers.cloudflare.com/fundamentals/api/reference/template/">built-in templates</a>, and <a href="https://developers.cloudflare.com/fundamentals/api/reference/permissions/">permission names</a>. Re-check them if the dashboard wording changes.</p></div>
+      </section>
+
       <section id="github">
         <h2>GitHub Actions deployment</h2>
         <ol>
           <li>Fork the repository for <strong>Sync fork</strong> updates, or use it as a Template repository for an independent history. The maintainer enables <strong>Settings → General → Template repository</strong> once.</li>
-          <li>Create a Cloudflare token permitted to edit Worker scripts, D1, R2, and Turnstile. Automatic challenge setup requires <strong>Turnstile Sites Write</strong>.</li>
+          <li>Follow the <a href="#cloudflare-token">least-privilege token guide</a>. Automatic challenge setup requires Turnstile write access.</li>
           <li>Add repository Action secrets <code>CLOUDFLARE_API_TOKEN</code> and <code>CLOUDFLARE_ACCOUNT_ID</code>.</li>
           <li>Run <strong>Deploy to Cloudflare</strong> manually or push to <code>main</code>.</li>
         </ol>

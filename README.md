@@ -78,11 +78,13 @@ Valid D1/R2 location values are controlled by Wrangler. Omit placement variables
 The repository contains focused workflows for secret-free CI, stable Cloudflare deployment, tagged releases, browser packages, and GitHub Pages documentation.
 
 1. Fork the repository when you want **Sync fork** updates, or create an independent repository from this Template repository. The maintainer must enable **Settings → General → Template repository** once for the **Use this template** button to appear.
-2. Create a Cloudflare API token that can edit Workers, D1, R2, and Turnstile resources. Automatic login protection requires **Turnstile Sites Write**.
+2. Follow the illustrated [least-privilege Cloudflare token guide](https://tenfy.cn/img-hub/#cloudflare-token): choose **Create Custom Token**, not the Global API Key or a broad built-in template. Automatic login protection requires **Turnstile Sites Write**.
 3. In the GitHub repository, open **Settings → Secrets and variables → Actions** and add:
    - `CLOUDFLARE_API_TOKEN`
    - `CLOUDFLARE_ACCOUNT_ID`
 4. Open **Actions → Deploy to Cloudflare → Run workflow**, or push to `main`.
+
+The exact custom-token permissions are **Account Settings Read**, **Workers Scripts Edit**, **D1 Edit**, **Workers R2 Storage Edit**, **Turnstile Edit**, **User Details Read**, and **Memberships Read**. Restrict **Account Resources** to **Include → Specific account** for the deployment account. The default `workers.dev` deployment does not need KV, Tail, DNS, or Zone permissions; add **Workers Routes Edit** only when you later configure a route on a specific zone.
 
 `main` is the stable distribution branch; development is integrated through `develop`. The same checked-in deployment workflow works in this repository and every fork. GitHub resolves secrets from the repository running the workflow, so a fork deploys only to the fork owner's Cloudflare account. By default, the workflow uses `img-hub-{repository-id}` as the Worker/D1/R2/Turnstile prefix to avoid collisions. Set the Actions repository variable `IMG_HUB_RESOURCE_PREFIX` to choose another prefix; the CLI also accepts `IMG_HUB_WORKER_NAME`, `IMG_HUB_DATABASE_NAME`, `IMG_HUB_BUCKET_NAME`, and `IMG_HUB_TURNSTILE_DOMAINS`.
 
