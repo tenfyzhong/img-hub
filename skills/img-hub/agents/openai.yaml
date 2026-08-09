@@ -1,0 +1,4 @@
+interface:
+  display_name: "ImgHub"
+  short_description: "Upload and manage files in a deployed ImgHub"
+  default_prompt: "Use $img-hub to upload a file and return its stable public URL."

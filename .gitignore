@@ -125,6 +125,10 @@ dist
 # Stores VSCode versions used for testing VSCode extensions
 .vscode-test
 
+# Cloudflare local and generated deployment state
+.wrangler/
+wrangler.generated.json
+
 # pnpm
 .pnpm-store
 
