@@ -229,6 +229,27 @@ test("password visibility icons match the state and API keys have their own menu
     assert.match(css, /\.password-field button\.active \.password-eye-closed\s*\{[^}]*display:\s*none/s);
 });
 
+test("administrator password generation copies immediately and copy feedback is visible", async () => {
+    const [javascript, css, translations] = await Promise.all([
+        readFile(new URL("../public/app.js", import.meta.url), "utf8"),
+        readFile(new URL("../public/styles.css", import.meta.url), "utf8"),
+        readFile(new URL("../public/i18n.js", import.meta.url), "utf8"),
+    ]);
+
+    assert.match(javascript,
+        /function notify\(message, error = false, duration = 4200\)[\s\S]*?setTimeout\(\(\) => show\(toast, false\), duration\)/);
+    assert.match(javascript,
+        /generate-user-password[\s\S]*?generateForForm\(byId\("user-form"\)\)[\s\S]*?copyText\([\s\S]*?message\.passwordGeneratedCopied[\s\S]*?duration:\s*2000/);
+    assert.match(javascript,
+        /copy-user-password[\s\S]*?copyText\([\s\S]*?message\.passwordCopied[\s\S]*?duration:\s*2000[\s\S]*?feedbackElement:/);
+    assert.match(javascript,
+        /function animateCopySuccess[\s\S]*?classList\.add\("copy-success"\)/);
+    assert.match(css, /\.password-tools button\.copy-success\s*\{[^}]*animation:/s);
+    assert.match(css, /@keyframes password-copy-success/);
+    assert.match(translations, /"message\.passwordGeneratedCopied": "Password generated and copied"/);
+    assert.match(translations, /"message\.passwordGeneratedCopied": "随机密码已生成并复制"/);
+});
+
 test("upload uses three equal panels and resource management is unified", async () => {
     const [html, javascript, css] = await Promise.all([
         readFile(new URL("../public/index.html", import.meta.url), "utf8"),

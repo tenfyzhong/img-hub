@@ -198,6 +198,10 @@ npm audit --audit-level=moderate
 
 不读取 Secret 的 `ci.yml` 会为目标是 `develop` 或 `main` 的 PR 以及对 `develop` 的 Push 运行这些检查。`deploy.yml` 会独立验证每次稳定 `main` 更新，之后才读取当前仓库自己的 Cloudflare 凭据。修改部署脚本或 Workflow 时应通过 `npm run check:deploy`。修改插件时应通过 `npm run build:extension` 以及下文的浏览器手工测试。修改文档时应保持中英文内容一致。
 
+### 销毁 Cloudflare 部署 Workflow
+
+手动销毁 workflow 是毁灭性且不可恢复的操作：它不会创建备份，会删除对应 Worker、全部 R2 object 及 bucket、D1 数据库和托管的 Turnstile Widget。绝不能把它作为常规手工验证运行；应使用 `test/destroy.test.js` 验证改动。真实执行必须得到仓库所有者明确授权，并且只能针对隔离、可丢弃的 Cloudflare 部署。存在 Bucket Lock 时，workflow 必须安全失败，直到获得授权的操作者移除 Lock。
+
 ## 手工测试网页应用
 
 启动完整的本地应用：
@@ -243,10 +247,10 @@ npm run dev:local
 涉及用户行为的改动应按以下清单手工检查：
 
 1. 使用全新的本地状态为管理员 `admin` 设置密码，并确认登录后不再出现初始化入口。
-2. 管理员创建普通用户并分配临时密码。
+2. 管理员打开创建用户抽屉并生成临时密码，确认两个密码框一致、密码自动复制到剪贴板，成功 Toast 在约 2 秒后消失。再次点击 **复制密码**，确认按钮出现动画、剪贴板内容一致且重新显示 2 秒 Toast，然后创建普通用户。
 3. 使用临时密码登录，确认修改密码前不能操作内容。
 4. 修改密码并重新登录，在子目录中上传文件和发布文本。
-5. 确认新公开 URL 使用 `/file/pub_{随机值}?v=N` 或 `/text/pub_{随机值}?v=N`，不包含用户名、目录或文件名，并且替换后随机路径保持不变。
+5. 确认文件与文本的公开 URL 都使用 `/pub/{32 位随机 ID}?v=N`，不包含 `pub_` 前缀、资源类型、用户名、目录或文件名，并且替换后随机路径保持不变。打开一个不存在的 `/pub/` URL，确认显示本地化 404 页面。
 6. 连续两次打开公开 URL，在浏览器开发者工具中确认首次带版本 GET 返回 `X-ImgHub-Cache: MISS`，重复 GET 可以返回 `HIT`；无版本或错误版本应为 `BYPASS`。
 7. 替换文件和文本，确认路径不变、`?v=` 递增，并且新 URL 返回新内容。
 8. 删除资源，确认它从所有者列表消失，公开 URL 不再可用。
@@ -266,7 +270,7 @@ npm run dev:local
 
 ```sh
 curl --silent --show-error --dump-header - --output /dev/null \
-  'http://localhost:8787/file/pub_替换为当前随机ID?v=1'
+  'http://localhost:8787/pub/替换为当前32位随机ID?v=1'
 ```
 
 ### R2 后端保留任务

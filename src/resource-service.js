@@ -12,7 +12,7 @@ function createId() {
 }
 
 function createPublicId() {
-    return `pub_${crypto.randomUUID().replaceAll("-", "")}`;
+    return crypto.randomUUID().replaceAll("-", "");
 }
 
 function createEvent(resource, action, sourceUrl = null, resourceId = resource.id) {

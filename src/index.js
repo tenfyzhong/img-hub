@@ -5,6 +5,7 @@ import { createRepositories } from "./database.js";
 import { AppError, requireActiveUser } from "./errors.js";
 import { assertSameOrigin, json, progressStream, readJson, routePublicResource } from "./http.js";
 import { createLoginProtection } from "./login-protection.js";
+import { publicNotFound } from "./not-found-page.js";
 import { buildPublicUrl } from "./paths.js";
 import { servePublicResource } from "./public-resource.js";
 import { fetchRemoteFile } from "./remote-file.js";
@@ -427,15 +428,19 @@ async function handleApi(request, env, repositories) {
 
 async function handleRequest(request, env, context) {
     const url = new URL(request.url);
-    const needsData = url.pathname.startsWith("/api/")
-        || (url.pathname.split("/").filter(Boolean).length === 1
-            && /^pub_[a-f0-9]{32}$/.test(url.pathname.split("/").filter(Boolean)[0] || ""));
+    const publicRoute = routePublicResource(url.pathname);
+    const publicNamespace = url.pathname === "/pub" || url.pathname.startsWith("/pub/");
+    const retiredPublicPath = /^\/(?:file|text)(?:\/|$)/.test(url.pathname)
+        || /^\/pub_[^/]*(?:\/|$)/.test(url.pathname);
+    if ((publicNamespace && !publicRoute) || retiredPublicPath) {
+        return publicNotFound(request);
+    }
+    const needsData = url.pathname.startsWith("/api/") || Boolean(publicRoute);
     if (!needsData) {
         return env.ASSETS.fetch(request);
     }
     await ensureSchema(env.DB);
     const repositories = createRepositories(env.DB);
-    const publicRoute = routePublicResource(url.pathname);
 
     if (publicRoute && ["GET", "HEAD"].includes(request.method)) {
         return servePublicResource({
@@ -450,7 +455,7 @@ async function handleRequest(request, env, context) {
     if (url.pathname.startsWith("/api/")) {
         return handleApi(request, env, repositories);
     }
-    return new Response("Not found", { status: 404 });
+    return publicNotFound(request);
 }
 
 export default {
