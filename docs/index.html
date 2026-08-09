@@ -200,6 +200,13 @@ npm run dev:local</code></pre>
         <pre><code>npx wrangler login
 npm run admin:reset -- --remote --database YOUR_D1_DATABASE_NAME</code></pre>
         <p>The hidden prompt creates a temporary password. Confirm <code>administrators_reset</code> is <code>1</code> and <code>administrator_username</code> is <code>admin</code>. The operation revokes administrator sessions and API keys, safely normalizes a legacy administrator name to <code>admin</code>, preserves the former name only as a public-URL alias, and requires a different password after login. A reset count of <code>0</code> means the wrong or an uninitialized database was selected.</p>
+        <h3>GitHub Actions: Reset administrator password</h3>
+        <ol>
+          <li>Under <strong>Settings → Secrets and variables → Actions</strong>, create or update <code>IMG_HUB_ADMIN_RESET_PASSWORD</code> with a new temporary password of 10–256 characters. The existing <code>CLOUDFLARE_API_TOKEN</code> must have D1 Edit access, and <code>CLOUDFLARE_ACCOUNT_ID</code> must still be configured.</li>
+          <li>Open <strong>Actions → Reset administrator password → Run workflow</strong>, enter the exact deployed D1 database name, and select the confirmation checkbox.</li>
+          <li>Confirm the log reports <code>administrators_reset</code> as <code>1</code>. Sign in as <code>admin</code>, immediately choose a different permanent password, then delete the temporary repository Secret.</li>
+        </ol>
+        <div class="callout"><p>The workflow is manual-only and never accepts the password as an Actions input. It revokes all administrator sessions and API keys. Never put the temporary password in the database-name field, an input, issue, screenshot, or log.</p></div>
       </section>
 
       <section id="moderation">

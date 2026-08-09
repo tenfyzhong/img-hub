@@ -228,6 +228,8 @@ npm run dev:local
 
 远程恢复命令是 `npm run admin:reset -- --remote --database <D1_DATABASE_NAME>`，它会直接修改 D1。日常贡献测试绝不能对共享或生产数据库执行；线上恢复测试必须获得明确授权并使用一次性数据库。
 
+修改 `.github/workflows/reset-admin-password.yml` 后，应通过 `test/admin-recovery.test.js` 验证。不要为了测试 YAML 而触发该 workflow：线上运行会直接修改选中的 D1 数据库、撤销管理员凭据，必须先获得明确授权并使用一次性部署。
+
 ### 语言测试
 
 清除 local storage 中的 `img-hub-language`，修改浏览器语言列表中的第一首选语言。确认 `zh` 语言环境打开中文界面，其他语言打开英文界面。然后使用 **EN / 中文** 切换并刷新，确认手工选择会保留。使用两种语言检查初始化、登录、强制改密、上传页的三个页签、统一资源管理、安全、管理、动态消息、错误、确认框和移动端导航。管理员配置的站点外观有意由两种语言共享；未配置时的内置欢迎文案会本地化。
