@@ -142,7 +142,7 @@ Build both generic packages locally with `npm run build:extension`. No deploymen
 
 ## Version releases and browser stores
 
-Set `package.json` to a numeric extension version, commit it, then push the matching tag, for example `v0.2.0`. `release.yml` tests the project, builds both extension packages, deploys the tagged version to the repository's Cloudflare account when its credentials exist, and creates a GitHub Release with both ZIP files.
+Set `package.json` to a numeric extension version, commit it, then push the matching tag, for example `v0.3.0`. `release.yml` tests the project, builds both extension packages, deploys the tagged version to the repository's Cloudflare account when its credentials exist, and creates a GitHub Release with both ZIP files.
 
 Browser store publishing runs only when a complete credential set is configured as Actions secrets:
 

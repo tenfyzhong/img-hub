@@ -142,7 +142,7 @@ python3 skills/img-hub/scripts/img_hub.py list --kind file
 
 ## 版本发布与浏览器商店
 
-先把 `package.json` 更新为纯数字点号组成的插件版本并提交，再推送匹配 Tag，例如 `v0.2.0`。`release.yml` 会运行测试、打包插件；若当前仓库配置了 Cloudflare 凭据，会部署 Tag 版本；随后创建包含两个 ZIP 的 GitHub Release。
+先把 `package.json` 更新为纯数字点号组成的插件版本并提交，再推送匹配 Tag，例如 `v0.3.0`。`release.yml` 会运行测试、打包插件；若当前仓库配置了 Cloudflare 凭据，会部署 Tag 版本；随后创建包含两个 ZIP 的 GitHub Release。
 
 只有配置了完整 Actions Secrets 集合时，才自动发布对应浏览器商店：
 
