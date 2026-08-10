@@ -9,8 +9,12 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 body {
-  width: 390px;
+  width: 780px;
   min-height: 520px;
   margin: 0;
   background:
@@ -25,17 +29,19 @@ header {
   padding: 22px 20px 12px;
 }
 
+.header-copy {
+  min-width: 0;
+}
+
 .mark {
-  display: grid;
   width: 44px;
   height: 44px;
-  place-items: center;
-  border-radius: 14px;
-  color: white;
-  background: #1b6556;
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  box-shadow: 0 8px 20px rgba(27, 101, 86, 0.25);
+  flex: 0 0 auto;
+  padding: 8px;
+  border-radius: 14px 14px 19px 12px;
+  fill: #f5f1e8;
+  background: #315c49;
+  box-shadow: 0 8px 20px rgba(49, 92, 73, 0.25);
 }
 
 h1, h2, p {
@@ -51,8 +57,52 @@ header p, .hint {
   font-size: 12px;
 }
 
+.language-switcher {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 2px;
+  margin-left: auto;
+  padding: 3px;
+  border: 1px solid rgba(25, 53, 47, 0.12);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.language-switcher button {
+  min-width: 32px;
+  padding: 5px 6px;
+  border-radius: 6px;
+  color: #64756f;
+  background: transparent;
+  font-size: 10px;
+}
+
+.language-switcher button:hover {
+  color: #19352f;
+  background: #edf4f0;
+}
+
+.language-switcher button.active {
+  color: white;
+  background: #315c49;
+}
+
 main {
-  padding: 6px 16px 18px;
+  padding: 6px 20px 18px;
+}
+
+#login-form {
+  width: 358px;
+  max-width: 100%;
+  margin-right: auto;
+  margin-left: auto;
+}
+
+#workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0 18px;
+  align-items: start;
 }
 
 .card {
@@ -81,7 +131,12 @@ label span {
   font-weight: 400;
 }
 
-input {
+label .label-title {
+  color: #435b55;
+  font-weight: 650;
+}
+
+input, select, textarea, .rich-content {
   min-width: 0;
   width: 100%;
   padding: 9px 10px;
@@ -91,7 +146,7 @@ input {
   color: #19352f;
 }
 
-input:focus {
+input:focus, select:focus, textarea:focus, .rich-content:focus {
   border-color: #2c7869;
   outline: 2px solid rgba(44, 120, 105, 0.16);
 }
@@ -121,20 +176,217 @@ button.link {
   background: transparent;
 }
 
-.row, .section-heading, .session-line {
+button.link:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.section-heading, .session-line, .session-actions {
   display: flex;
   gap: 8px;
   align-items: center;
   justify-content: space-between;
 }
 
-.row input {
-  flex: 1;
-}
-
 .session-line {
+  grid-column: 1 / -1;
   padding: 8px 3px 0;
   font-size: 12px;
+}
+
+.session-actions {
+  gap: 10px;
+}
+
+a.link {
+  color: #1b6556;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.publish-card {
+  gap: 12px;
+}
+
+.publish-card, .recent-card {
+  min-width: 0;
+}
+
+.recent-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.recent-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  border-radius: inherit;
+  background: rgba(247, 250, 245, 0.88);
+  backdrop-filter: blur(2px);
+}
+
+.recent-loading-content {
+  display: grid;
+  place-items: center;
+  gap: 9px;
+  color: #315c49;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.recent-loading-spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid rgba(49, 92, 73, 0.2);
+  border-top-color: #1b6556;
+  border-radius: 50%;
+  animation: recent-loading-spin 0.8s linear infinite;
+}
+
+@keyframes recent-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recent-loading-spinner {
+    animation-duration: 1.6s;
+  }
+}
+
+.mode-switch {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border-radius: 11px;
+  background: #edf4f0;
+}
+
+.mode-option {
+  padding: 8px 4px;
+  color: #557068;
+  background: transparent;
+  font-size: 11px;
+}
+
+.mode-option:hover {
+  color: #234b41;
+  background: #dfeae5;
+}
+
+.mode-option.active {
+  color: white;
+  background: #1b6556;
+  box-shadow: 0 4px 10px rgba(27, 101, 86, 0.2);
+}
+
+.mode-panel form {
+  display: grid;
+  gap: 8px;
+}
+
+.file-picker {
+  width: 100%;
+  min-height: 138px;
+  display: grid;
+  grid-template-rows: auto auto auto auto;
+  place-items: center;
+  gap: 5px;
+  overflow: hidden;
+  padding: 16px;
+  border: 1px dashed rgba(49, 92, 73, 0.34);
+  border-radius: 12px;
+  background: rgba(49, 92, 73, 0.05);
+  cursor: pointer;
+  text-align: center;
+}
+
+.file-picker:hover {
+  border-color: #315c49;
+  background: rgba(49, 92, 73, 0.09);
+}
+
+.file-picker:focus-visible {
+  outline: 2px solid rgba(44, 120, 105, 0.35);
+  outline-offset: 2px;
+}
+
+.file-picker.dragging, .file-picker.pasting {
+  border-color: #315c49;
+  background: rgba(49, 92, 73, 0.12);
+  box-shadow: inset 0 0 0 2px rgba(49, 92, 73, 0.1);
+}
+
+.file-picker.uploading {
+  opacity: 0.7;
+  cursor: progress;
+}
+
+.file-picker-mark {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  color: #315c49;
+  background: rgba(49, 92, 73, 0.12);
+  font-size: 22px;
+}
+
+.file-picker strong {
+  color: #315c49;
+  font-size: 13px;
+}
+
+.file-picker small {
+  max-width: 270px;
+  overflow: hidden;
+  color: #64756f;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-picker .selected-files {
+  color: #315c49;
+  font-weight: 700;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 112px;
+  gap: 8px;
+}
+
+.field-row label, #text-form > label, #remote-file-form label {
+  display: grid;
+  gap: 5px;
+}
+
+textarea {
+  resize: vertical;
+  font: inherit;
+}
+
+.rich-content {
+  min-height: 144px;
+  overflow-y: auto;
+  font-size: 13px;
 }
 
 #resource-list {
@@ -161,12 +413,29 @@ button.link {
   white-space: nowrap;
 }
 
+.resource-name a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.resource-name a:hover {
+  color: #1b6556;
+  text-decoration: underline;
+}
+
 .resource-path {
   overflow: hidden;
   color: #71817c;
   font-size: 10px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.resource-kind {
+  margin-right: 5px;
+  color: #2c7869;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
 .resource-actions {

@@ -19,6 +19,10 @@ test("English and Chinese guides cover every supported deployment path", async (
         assert.match(guide, /IMG_HUB_API_KEY/);
         assert.match(guide, /IMG_HUB_URL/);
         assert.match(guide, /Chrome.*Edge.*Firefox/s);
+        assert.match(guide, /0\.0\.0-dev/);
+        assert.match(guide, /img-hub-extension-chrome/);
+        assert.match(guide, /img-hub-extension-edge/);
+        assert.match(guide, /img-hub-extension-firefox/);
         assert.match(guide, /CHROME_REFRESH_TOKEN/);
         assert.match(guide, /WEB_EXT_API_SECRET/);
         assert.match(guide, /Template|模板/i);

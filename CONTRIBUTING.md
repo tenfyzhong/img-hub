@@ -191,7 +191,7 @@ Run checks relevant to the changed area:
 # Verify the Worker bundle without deploying it
 npm run check:deploy
 
-# Build generic Chromium and Firefox extension packages
+# Build 0.0.0-dev Chrome, Edge, and Firefox extension packages
 npm run build:extension
 
 # Check dependency vulnerabilities
@@ -287,19 +287,30 @@ Do not trigger retention against deployed R2 data during routine testing. Use th
 
 ## Manual browser extension testing
 
-Build both extension variants:
+Build all three development variants, or one target while iterating:
 
 ```sh
 npm run build:extension
+npm run build:extension:chrome
+npm run build:extension:edge
+npm run build:extension:firefox
 ```
 
 Keep `npm run dev:local` running, then test against `http://localhost:8787`:
 
-- Chrome or Edge: open the extensions page, enable Developer mode, choose **Load unpacked**, and select `dist/extensions/chromium/`.
+- Chrome: open the extensions page, enable Developer mode, choose **Load unpacked**, and select `dist/extensions/chrome/`.
+- Microsoft Edge: open the extensions page, enable Developer mode, choose **Load unpacked**, and select `dist/extensions/edge/`.
 - Firefox: open `about:debugging#/runtime/this-firefox`, choose **Load Temporary Add-on**, and select `dist/extensions/firefox/manifest.json`.
-- In the popup, configure the local URL, grant host access, and sign in with a test account.
-- Verify upload, list refresh, URL copy, replacement, deletion, logout, invalid credentials, and a restarted local service.
-- Test both browser packages when changing shared popup code or permissions.
+- In the popup, enter the local URL, username, and password, then select **Sign in** once. Confirm the URL and username are saved only after success, the complete login surface is hidden, and reopening the popup keeps the session usable without another login.
+- Sign out or invalidate the disposable local session. Confirm the login surface returns with the URL and username restored and the password blank.
+- With no saved override, set the browser's first preferred language to English and then Simplified Chinese and reopen the popup. Confirm every static label, dynamic action, status, error, and confirmation follows it. Switch **EN / 中文**, reopen the popup, and confirm the explicit choice persists.
+- Switch among **Upload files**, **Text**, and **From URL**. Select files, drag files onto the centered surface, paste a copied file, and paste a clipboard image; confirm all four start uploading immediately and the newest result URL is copied. Paste text into the directory and text editors and confirm it does not trigger an upload. Publish Markdown and rich text, import an HTTP(S) file, and confirm the unified list contains no more than the latest 10 uploads.
+- During a drag upload, remove focus from the popup or otherwise deny its automatic clipboard write. Confirm the upload still succeeds, recent uploads refreshes, and the localized success message directs the user to the explicit **Copy** action instead of reporting a clipboard exception as an upload failure.
+- With the browser in full-screen mode, choose files from the centered selection surface. Confirm opening and closing the system chooser and showing short or long selected-file feedback do not resize or horizontally shift the browser popup.
+- Confirm the action popup opens immediately at its fixed 780-pixel width, with publishing in the left column and the latest 10 uploads in the right. It must not first show the uploads below publishing and then grow or reflow.
+- Throttle the local resource-list request and confirm the recent-uploads card shows its centered loading overlay and localized animation during initial loading, refresh, and post-publish reloads, then removes it after either success or failure.
+- Open the configured deployment with **Open ImgHub**, refresh the list, copy URLs, replace a file, delete disposable resources, try invalid credentials, and restart the local service.
+- Confirm the unpacked manifests display `0.0.0-dev`. Test all three browser packages when changing shared popup code or permissions.
 
 Generated `dist/extensions/` files are test artifacts and must not be committed.
 

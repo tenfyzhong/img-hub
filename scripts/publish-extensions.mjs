@@ -163,17 +163,19 @@ export async function publishConfiguredStores({
 } = {}) {
     const packageJson = JSON.parse(await readFile(resolve(projectDirectory, "package.json"), "utf8"));
     const base = resolve(projectDirectory, "dist", "extensions");
-    const chromiumPackage = resolve(base, `img-hub-extension-chromium-v${packageJson.version}.zip`);
+    const version = String(environment.IMG_HUB_EXTENSION_VERSION || packageJson.version).replace(/^v(?=\d)/, "");
+    const chromePackage = resolve(base, `img-hub-extension-chrome-v${version}.zip`);
+    const edgePackage = resolve(base, `img-hub-extension-edge-v${version}.zip`);
     const firefoxDirectory = resolve(base, "firefox");
     const configured = getStoreConfiguration(environment);
     const published = [];
 
     if (configured.chrome) {
-        await publishChrome(environment, chromiumPackage, request);
+        await publishChrome(environment, chromePackage, request);
         published.push("Chrome");
     }
     if (configured.edge) {
-        await publishEdge(environment, chromiumPackage, request);
+        await publishEdge(environment, edgePackage, request);
         published.push("Edge");
     }
     if (configured.firefox) {
