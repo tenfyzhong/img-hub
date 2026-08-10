@@ -3,64 +3,113 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ImgHub Companion</title>
+  <title data-i18n="extension.documentTitle">ImgHub Companion</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
   <header>
-    <div class="mark" aria-hidden="true">IH</div>
-    <div>
+    <svg class="mark" viewBox="0 0 40 40" aria-hidden="true">
+      <path d="M7 27.5 15.5 19l5.2 5.2 4.5-4.5L33 27.5V33H7Z"></path>
+      <circle cx="25.5" cy="12.5" r="4"></circle>
+    </svg>
+    <div class="header-copy">
       <h1>ImgHub</h1>
-      <p>Keep uploads close at hand.</p>
+      <p data-i18n="extension.subtitle">Keep uploads close at hand.</p>
+    </div>
+    <div class="language-switcher" role="group" data-i18n-aria-label="language.aria" aria-label="Language">
+      <button type="button" data-language="en" data-i18n="language.en">EN</button>
+      <button type="button" data-language="zh-CN" data-i18n="language.zh">中文</button>
     </div>
   </header>
 
   <main>
-    <form id="connection-form" class="card">
-      <label for="deployment-url">Deployment URL</label>
-      <div class="row">
-        <input id="deployment-url" name="deploymentUrl" type="url" placeholder="https://images.example.com" required>
-        <button type="submit" class="secondary">Save</button>
-      </div>
-      <p id="connection-status" class="hint" role="status"></p>
-    </form>
-
     <form id="login-form" class="card">
-      <h2>Sign in</h2>
-      <label for="username">Username</label>
+      <h2 data-i18n="login.title">Sign in</h2>
+      <label for="deployment-url" data-i18n="extension.deploymentUrl">Deployment URL</label>
+      <input id="deployment-url" name="deploymentUrl" type="url" data-i18n-placeholder="extension.deploymentPlaceholder" placeholder="https://images.example.com" required>
+      <label for="username" data-i18n="common.username">Username</label>
       <input id="username" name="username" autocomplete="username" required>
-      <label for="password">Password</label>
+      <label for="password" data-i18n="common.password">Password</label>
       <input id="password" name="password" type="password" autocomplete="current-password" required>
-      <button type="submit">Sign in</button>
+      <button type="submit" data-i18n="login.submit">Sign in</button>
+      <p class="hint" data-i18n="extension.loginSavedHint">The deployment and username are saved after a successful sign-in.</p>
     </form>
 
     <section id="workspace" hidden>
       <div class="session-line">
-        <span>Signed in as <strong id="current-user"></strong></span>
-        <button id="logout-button" type="button" class="link">Sign out</button>
+        <span><span data-i18n="extension.signedInAs">Signed in as</span> <strong id="current-user"></strong></span>
+        <div class="session-actions">
+          <a id="deployment-link" class="link" target="_blank" rel="noopener noreferrer" data-i18n="extension.openSite">Open ImgHub</a>
+          <button id="logout-button" type="button" class="link" data-i18n="common.signOut">Sign out</button>
+        </div>
       </div>
 
-      <form id="upload-form" class="card">
-        <h2>Upload image</h2>
-        <label for="directory">Directory <span>(optional)</span></label>
-        <input id="directory" name="directory" placeholder="screenshots/2026">
-        <label for="image-file">Image</label>
-        <input id="image-file" name="file" type="file" accept="image/*" required>
-        <button type="submit">Upload</button>
-      </form>
-
-      <section class="card">
-        <div class="section-heading">
-          <h2>Your images</h2>
-          <button id="refresh-button" type="button" class="link">Refresh</button>
+      <section class="card publish-card">
+        <div class="mode-switch" role="tablist" data-i18n-aria-label="upload.modeAria" aria-label="Publish type">
+          <button id="upload-file-tab" class="mode-option active" type="button" role="tab" aria-selected="true" aria-controls="upload-file-panel" data-mode="file" data-i18n="upload.fileTab">Upload files</button>
+          <button id="upload-text-tab" class="mode-option" type="button" role="tab" aria-selected="false" aria-controls="upload-text-panel" data-mode="text" data-i18n="extension.textTab">Text</button>
+          <button id="upload-remote-tab" class="mode-option" type="button" role="tab" aria-selected="false" aria-controls="upload-remote-panel" data-mode="remote" data-i18n="extension.remoteTab">From URL</button>
         </div>
-        <p id="empty-state" class="hint">No images uploaded yet.</p>
+
+        <div id="upload-file-panel" class="mode-panel" role="tabpanel" aria-labelledby="upload-file-tab">
+          <form id="file-upload-form">
+            <label for="file-directory" data-i18n="common.optionalDirectory">Optional subdirectory</label>
+            <input id="file-directory" name="directory" data-i18n-placeholder="extension.fileDirectoryPlaceholder" placeholder="screenshots/2026">
+            <label id="file-drop-zone" class="file-picker" for="file-picker" tabindex="0" data-i18n-aria-label="files.pasteAria" aria-label="Choose files, drop files here, or paste files and clipboard images">
+              <input id="file-picker" class="visually-hidden" name="file" type="file" multiple>
+              <span class="file-picker-mark" aria-hidden="true">＋</span>
+              <strong data-i18n="files.choose">Choose, drop, or paste files</strong>
+              <small data-i18n="files.autoUpload">Click here, drag files, or paste from the clipboard; upload starts immediately, up to 100 MB each</small>
+              <small id="selected-files" class="selected-files" data-i18n="extension.noFilesSelected">No files selected</small>
+            </label>
+          </form>
+        </div>
+
+        <div id="upload-text-panel" class="mode-panel" role="tabpanel" aria-labelledby="upload-text-tab" hidden>
+          <form id="text-form">
+            <div class="field-row">
+              <label><span class="label-title" data-i18n="texts.name">File name</span><input name="name" data-i18n-placeholder="texts.namePlaceholder" placeholder="Generated automatically"></label>
+              <label><span class="label-title" data-i18n="texts.format">Format</span>
+                <select id="text-format" name="format">
+                  <option value="markdown" data-i18n="texts.markdown">Markdown</option>
+                  <option value="rich" data-i18n="texts.rich">Rich text</option>
+                </select>
+              </label>
+            </div>
+            <label><span class="label-title" data-i18n="common.optionalDirectory">Optional subdirectory</span><input name="directory" data-i18n-placeholder="extension.textDirectoryPlaceholder" placeholder="notes/2026"></label>
+            <label id="markdown-content-field"><span class="label-title" data-i18n="texts.content">Content</span><textarea id="markdown-content" name="content" rows="7" data-i18n-placeholder="extension.textContentPlaceholder" placeholder="Write or paste text…" required></textarea></label>
+            <label id="rich-content-field" hidden><span class="label-title" data-i18n="texts.content">Content</span><div id="rich-content" class="rich-content" contenteditable="true" role="textbox" aria-multiline="true"></div></label>
+            <button type="submit" data-i18n="texts.publish">Publish text</button>
+          </form>
+        </div>
+
+        <div id="upload-remote-panel" class="mode-panel" role="tabpanel" aria-labelledby="upload-remote-tab" hidden>
+          <form id="remote-file-form">
+            <label><span class="label-title" data-i18n="files.remoteUrl">File URL</span><input name="url" type="url" data-i18n-placeholder="extension.remotePlaceholder" placeholder="https://example.com/image.png" required></label>
+            <label><span class="label-title" data-i18n="common.optionalDirectory">Optional subdirectory</span><input name="directory" data-i18n-placeholder="extension.remoteDirectoryPlaceholder" placeholder="imports/2026"></label>
+            <button type="submit" data-i18n="files.import">Fetch and upload</button>
+          </form>
+        </div>
+      </section>
+
+      <section id="recent-card" class="card recent-card" aria-busy="false">
+        <div id="recent-loading" class="recent-loading" role="status" hidden>
+          <div class="recent-loading-content">
+            <span class="recent-loading-spinner" aria-hidden="true"></span>
+            <span data-i18n="extension.loadingUploads">Loading recent uploads…</span>
+          </div>
+        </div>
+        <div class="section-heading">
+          <h2 data-i18n="extension.recentUploads">Recent 10 uploads</h2>
+          <button id="refresh-button" type="button" class="link" data-i18n="common.refresh">Refresh</button>
+        </div>
+        <p id="empty-state" class="hint" data-i18n="extension.emptyUploads">No uploads yet.</p>
         <ul id="resource-list"></ul>
       </section>
     </section>
 
     <p id="message" role="alert"></p>
-    <input id="replacement-file" type="file" accept="image/*" hidden>
+    <input id="replacement-file" type="file" hidden>
   </main>
   <script type="module" src="popup.js"></script>
 </body>

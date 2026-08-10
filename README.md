@@ -131,18 +131,21 @@ Do not put `IMG_HUB_API_KEY` in prompts, shell history, logs, or source control.
 
 ## Browser extension
 
-Download the two assets from a GitHub Release:
+Download the three assets from a GitHub Release:
 
-- `img-hub-extension-chromium-*.zip` for Chrome and Edge
+- `img-hub-extension-chrome-*.zip` for Chrome
+- `img-hub-extension-edge-*.zip` for Microsoft Edge
 - `img-hub-extension-firefox-*.zip` for Firefox
 
-For local installation, unzip the matching package. Load the Chromium directory with **Extensions → Developer mode → Load unpacked**. In Firefox, open `about:debugging#/runtime/this-firefox` and choose **Load Temporary Add-on**, or install the signed package once it is published to AMO. Open the extension, grant access to your deployment URL, and sign in. The extension stores the deployment URL and login token in extension-local storage; it never stores the password. It supports image upload, listing, URL copy, replacement, and deletion.
+For local installation, unzip the matching package. Load the Chrome or Edge directory with **Extensions → Developer mode → Load unpacked**. In Firefox, open `about:debugging#/runtime/this-firefox` and choose **Load Temporary Add-on**, or install the signed package once it is published to AMO. Enter the deployment URL, username, and password together, then select **Sign in**; a successful login saves the URL, username, and login token, hides the complete login surface, and leaves only the workspace. The password is never stored. When the token expires, the login surface returns with the saved URL and username already filled in.
 
-Build both generic packages locally with `npm run build:extension`. No deployment domain is embedded, so the same release artifacts connect to the original deployment or any fork.
+The workspace has the same three publishing modes as the site: file upload with owner-scoped instant-upload checks, Markdown or rich-text publishing, and remote HTTP(S) file import. Its centered file surface accepts picker selection, drag-and-drop, pasted files, and clipboard images; each starts uploading immediately, while paste inside an editable field remains normal text editing. If the browser denies automatic URL copying because the popup lost focus, the successful publish remains successful and the URL can still be copied from recent uploads. It shows the 10 most recently created uploads across files and text, and **Open ImgHub** opens the configured deployment directly. The popup follows the browser's first preferred language and supports a persistent **EN / 中文** override, using the same English and Simplified Chinese catalog as the site. The fixed selection surface prevents selected-file feedback from resizing the popup. The popup opens directly at its fixed 780-pixel two-column layout, with publishing on the left and recent uploads on the right; it does not first render a narrow stacked layout and then grow.
+
+Build all three unpacked directories and ZIPs locally with `npm run build:extension`. Development artifacts use the displayed version `0.0.0-dev` and are written to `dist/extensions/chrome/`, `dist/extensions/edge/`, and `dist/extensions/firefox/`. Build one target while debugging with `npm run build:extension:chrome`, `npm run build:extension:edge`, or `npm run build:extension:firefox`. No deployment domain is embedded, so the same artifacts connect to the original deployment or any fork.
 
 ## Version releases and browser stores
 
-Set `package.json` to a numeric extension version, commit it, then push the matching tag, for example `v0.3.0`. `release.yml` tests the project, builds both extension packages, deploys the tagged version to the repository's Cloudflare account when its credentials exist, and creates a GitHub Release with both ZIP files.
+Set the application `package.json` to the release version, commit it, then push the matching tag, for example `v0.4.0`. The extension source keeps its development version at `0.0.0-dev`; `release.yml` derives the formal extension version from the tag, tests the project, builds the Chrome, Edge, and Firefox packages, deploys the tagged version to the repository's Cloudflare account when its credentials exist, and creates a GitHub Release with all three ZIP files.
 
 Browser store publishing runs only when a complete credential set is configured as Actions secrets:
 

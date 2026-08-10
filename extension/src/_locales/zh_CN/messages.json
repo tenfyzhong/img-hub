@@ -1,0 +1,8 @@
+{
+  "extensionName": {
+    "message": "ImgHub 助手"
+  },
+  "extensionDescription": {
+    "message": "向任意 ImgHub 部署上传图片、发布文本和导入外链文件。"
+  }
+}

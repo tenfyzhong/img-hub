@@ -1,6 +1,6 @@
 {
   "name": "img-hub",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -15,6 +15,9 @@
     "destroy:cloudflare": "node scripts/destroy-cloudflare.mjs",
     "check:deploy": "wrangler deploy --dry-run",
     "build:extension": "node extension/scripts/build.mjs",
+    "build:extension:chrome": "node extension/scripts/build.mjs --browser chrome",
+    "build:extension:edge": "node extension/scripts/build.mjs --browser edge",
+    "build:extension:firefox": "node extension/scripts/build.mjs --browser firefox",
     "publish:extension": "node scripts/publish-extensions.mjs"
   },
   "devDependencies": {

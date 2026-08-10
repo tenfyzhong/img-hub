@@ -131,18 +131,21 @@ python3 skills/img-hub/scripts/img_hub.py list --kind file
 
 ## 浏览器插件
 
-从 GitHub Release 下载：
+从 GitHub Release 下载三个独立产物：
 
-- `img-hub-extension-chromium-*.zip`：用于 Chrome 和 Edge
+- `img-hub-extension-chrome-*.zip`：用于 Chrome
+- `img-hub-extension-edge-*.zip`：用于 Microsoft Edge
 - `img-hub-extension-firefox-*.zip`：用于 Firefox
 
-本地安装时先解压对应包。Chrome/Edge 在扩展管理页开启 **Developer mode** 后选择 **Load unpacked**；Firefox 打开 `about:debugging#/runtime/this-firefox` 选择 **Load Temporary Add-on**，或在发布到 AMO 后安装签名包。打开插件，为部署域名授权并登录。插件只在扩展本地存储中保存部署域名与登录 Token，不保存密码；支持图片上传、列表、复制 URL、替换和删除。
+本地安装时先解压对应包。Chrome/Edge 在扩展管理页开启 **Developer mode** 后选择 **Load unpacked**；Firefox 打开 `about:debugging#/runtime/this-firefox` 选择 **Load Temporary Add-on**，或在发布到 AMO 后安装签名包。在同一个登录窗口填写 Deployment URL、用户名和密码后点击 **Sign in**；登录成功会自动保存 URL、用户名与登录 Token，并隐藏整个登录区域，只显示上传工作区。插件绝不保存密码。Token 失效后登录区域会重新出现，之前的 URL 与用户名会自动回填。
 
-运行 `npm run build:extension` 可构建两个通用包。产物不包含固定部署域名，因此同一套插件可连接本仓库或任意 fork 部署的服务。
+工作区与站点一样提供三个发布页签：带用户级秒传检查的文件上传、Markdown/富文本发布，以及从 HTTP(S) 外链导入文件。居中的文件区域支持选择文件、拖入文件、粘贴文件和剪贴板图片，四种方式都会立即开始上传；在输入框或编辑器中粘贴仍按普通文本编辑处理。如果插件失去焦点导致浏览器拒绝自动复制 URL，发布仍会保持成功，并可从最近上传中再次复制。列表统一显示最近创建的 10 条文件或文本；点击 **打开 ImgHub** 可直接打开当前 Deployment URL。插件默认跟随浏览器第一首选语言，也可以通过 **EN / 中文** 手动切换并持久保存，与主站共用英文和简体中文目录。固定尺寸的选择区域不会因为文件反馈而改变插件弹窗宽度。插件会直接以固定的 780 像素双栏布局打开，发布区域位于左侧，最近上传记录位于右侧；不会先显示窄版上下布局再扩大窗口。
+
+运行 `npm run build:extension` 可在 `dist/extensions/chrome/`、`dist/extensions/edge/` 和 `dist/extensions/firefox/` 生成三个可直接调试的目录及 ZIP；开发产物显示版本 `0.0.0-dev`。也可分别运行 `npm run build:extension:chrome`、`npm run build:extension:edge` 或 `npm run build:extension:firefox`。产物不包含固定部署域名，因此同一套插件可连接本仓库或任意 fork 部署的服务。
 
 ## 版本发布与浏览器商店
 
-先把 `package.json` 更新为纯数字点号组成的插件版本并提交，再推送匹配 Tag，例如 `v0.3.0`。`release.yml` 会运行测试、打包插件；若当前仓库配置了 Cloudflare 凭据，会部署 Tag 版本；随后创建包含两个 ZIP 的 GitHub Release。
+先把主应用 `package.json` 更新为发布版本并提交，再推送匹配 Tag，例如 `v0.4.0`。插件源码的开发版本始终为 `0.0.0-dev`；`release.yml` 会从 Tag 得出正式插件版本，运行测试并分别打包 Chrome、Edge、Firefox。若当前仓库配置了 Cloudflare 凭据，会部署 Tag 版本；随后创建包含三个 ZIP 的 GitHub Release。
 
 只有配置了完整 Actions Secrets 集合时，才自动发布对应浏览器商店：
 

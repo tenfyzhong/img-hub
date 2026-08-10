@@ -29,7 +29,8 @@ jobs:
           git merge-base --is-ancestor "$GITHUB_SHA" origin/main
       - run: npm run test:local
       - run: npm run check:deploy
-      - run: npm run build:extension
+      - name: Build tagged Chrome, Edge, and Firefox packages
+        run: npm run build:extension -- --version "$GITHUB_REF_NAME"
 
       - name: Check Cloudflare configuration
         id: cloudflare
@@ -59,7 +60,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" \
-            dist/extensions/img-hub-extension-chromium-*.zip \
+            dist/extensions/img-hub-extension-chrome-*.zip \
+            dist/extensions/img-hub-extension-edge-*.zip \
             dist/extensions/img-hub-extension-firefox-*.zip \
             --verify-tag --generate-notes --title "$GITHUB_REF_NAME"
 
@@ -75,5 +77,6 @@ jobs:
           EDGE_CLIENT_ID: ${{ secrets.EDGE_CLIENT_ID }}
           EDGE_API_KEY: ${{ secrets.EDGE_API_KEY }}
           EDGE_PUBLISH_NOTES: Release ${{ github.ref_name }}
+          IMG_HUB_EXTENSION_VERSION: ${{ github.ref_name }}
           WEB_EXT_API_KEY: ${{ secrets.WEB_EXT_API_KEY }}
           WEB_EXT_API_SECRET: ${{ secrets.WEB_EXT_API_SECRET }}
