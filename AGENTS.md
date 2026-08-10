@@ -217,7 +217,8 @@ Keep route handling thin. Put reusable authorization, validation, persistence, o
 
 ## Browser extension and Agent Skill
 
-- Chrome and Edge share the Chromium package; Firefox receives its own manifest variant.
+- Chrome, Edge, and Firefox receive separate packages built from the shared source; Firefox also receives its own manifest settings.
+- Local extension builds display `0.0.0-dev`; tagged release builds derive their formal extension version from the matching `v*` tag.
 - The extension must remain generic. Never compile a deployment domain or user credential into a package.
 - The extension supports configurable HTTP localhost during development and configured HTTPS deployments in use.
 - Shared popup changes must work in Chrome, Edge, and Firefox.
@@ -246,7 +247,7 @@ Keep route handling thin. Put reusable authorization, validation, persistence, o
 - Resource names must remain repository-specific by default so the upstream repository and forks do not collide.
 - `ci.yml` is secret-free and validates pull requests to `develop`/`main` plus pushes to `develop`.
 - `deploy.yml` validates every stable `main` update, including fork synchronization, and deploys only when that repository has both Cloudflare credentials.
-- `release.yml` accepts matching `v*` tags contained in `main`, shares the `cloudflare-production` concurrency lock, builds both extension packages, creates a GitHub Release, and conditionally publishes configured stores.
+- `release.yml` accepts matching `v*` tags contained in `main`, shares the `cloudflare-production` concurrency lock, builds all three extension packages, creates a GitHub Release, and conditionally publishes configured stores.
 - `destroy-cloudflare.yml` is manual-only, runs only from `main`, shares the production concurrency lock, requires the exact repository plus an irreversible confirmation phrase and checkbox, and targets the same repository-specific resource prefix as deployment.
 - Cloudflare destruction must discover exact D1 and Turnstile matches and reject ambiguous names or any R2 bucket lock before the first mutation. It then removes the Worker, every R2 object and bucket, D1, and the managed Turnstile widget. Never execute it without explicit authorization for a disposable deployment.
 - Never use `pull_request_target` to execute untrusted repository code with Secrets.

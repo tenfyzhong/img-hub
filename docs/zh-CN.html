@@ -144,15 +144,19 @@ export IMG_HUB_API_KEY=imh_your_key_shown_once</code></pre>
 
       <section id="extension">
         <h2>Chrome、Edge、Firefox 浏览器插件</h2>
-        <p>每个 GitHub Release 提供 Chrome/Edge 共用的 Chromium ZIP 与 Firefox ZIP。两个包都不包含固定服务域名；在插件中填写实际部署 URL、授权访问该 Origin，然后登录。</p>
-        <p>解压 Chromium 包，在扩展管理页用 <strong>Developer mode → Load unpacked</strong> 加载。Firefox 开发安装可打开 <code>about:debugging#/runtime/this-firefox</code>，选择 <strong>Load Temporary Add-on</strong>。插件只在扩展本地保存部署 URL 和登录 Token，不保存密码，支持上传、列表、复制 URL、替换和删除。</p>
+        <p>每个 GitHub Release 分别提供 Chrome、Microsoft Edge、Firefox ZIP，且都不包含固定服务域名。在同一个窗口填写 Deployment URL、用户名与密码后点击 <strong>Sign in</strong>；成功后自动保存 URL、用户名与 Token，并隐藏整个登录区域。插件绝不保存密码；Token 失效后会自动回填 URL 与用户名供下次登录。</p>
+        <p>工作区的三个页签分别支持文件上传、Markdown/富文本发布以及从 HTTP(S) 外链导入文件。居中的文件区域支持选择文件、拖入文件、粘贴文件和剪贴板图片，并立即开始上传；在可编辑字段中粘贴仍然只编辑文本。如果插件失去焦点导致浏览器拒绝自动复制 URL，发布仍然成功，URL 可通过最近上传中的 <strong>复制</strong> 操作获取。统一列表显示最近 10 条，<strong>打开 ImgHub</strong> 可直接打开配置的站点。插件默认跟随浏览器第一首选语言，也可以通过 <strong>EN / 中文</strong> 手动切换并持久保存，与主站共用英文和简体中文目录。固定尺寸的选择区域在打开系统文件选择器或显示文件反馈时不会改变插件弹窗宽度。插件直接以固定的 780 像素双栏布局打开，发布区域使用左栏，最近上传记录使用右栏，不会在首帧渲染后再扩大。</p>
+        <p>Chrome 与 Edge 分别通过 <strong>Developer mode → Load unpacked</strong> 加载 <code>dist/extensions/chrome/</code> 和 <code>dist/extensions/edge/</code>。Firefox 通过 <code>about:debugging#/runtime/this-firefox</code> 加载 <code>dist/extensions/firefox/manifest.json</code>。本地开发产物显示 <code>0.0.0-dev</code>；可一次构建全部目标，也可只构建一个目标：</p>
         <pre><code>npm install
-npm run build:extension</code></pre>
+npm run build:extension
+npm run build:extension:chrome
+npm run build:extension:edge
+npm run build:extension:firefox</code></pre>
       </section>
 
       <section id="release">
         <h2>GitHub Release 与商店发布</h2>
-        <p>先修改 <code>package.json</code> 的纯数字版本，将发布代码合入 <code>main</code>，再推送匹配 Tag，例如 <code>v0.3.0</code>。发布 workflow 会拒绝不属于 <code>main</code> 的 Tag，运行测试并构建两个通用插件包；配置 Cloudflare 凭据时部署到当前仓库自己的账号；最后创建 GitHub Release。</p>
+        <p>先修改主应用 <code>package.json</code> 版本，将发布代码合入 <code>main</code>，再推送匹配 Tag，例如 <code>v0.3.0</code>。插件源码保持 <code>0.0.0-dev</code>，发布 workflow 从 Tag 得到正式插件版本，拒绝不属于 <code>main</code> 的 Tag，运行测试并构建 <code>img-hub-extension-chrome-*.zip</code>、<code>img-hub-extension-edge-*.zip</code>、<code>img-hub-extension-firefox-*.zip</code>；配置 Cloudflare 凭据时部署到当前仓库自己的账号；最后创建 GitHub Release。</p>
         <p>每个商店只有在完整配置对应 Secrets 时才自动发布：</p>
         <ul>
           <li>Chrome：<code>CHROME_PUBLISHER_ID</code>、<code>CHROME_EXTENSION_ID</code>、<code>CHROME_CLIENT_ID</code>、<code>CHROME_CLIENT_SECRET</code>、<code>CHROME_REFRESH_TOKEN</code></li>

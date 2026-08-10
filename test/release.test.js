@@ -86,7 +86,7 @@ test("Edge publication resolves operation IDs for upload and publish polling", a
     assert.equal(calls[0].options.headers["X-ClientID"], "client");
 });
 
-test("release workflow deploys, releases generic packages, and conditionally publishes stores", async () => {
+test("release workflow versions and releases three browser packages from the tag", async () => {
     const workflow = await readFile(new URL("../.github/workflows/release.yml", import.meta.url), "utf8");
 
     assert.match(workflow, /tags:\s*\[?['"]?v\*/);
@@ -98,9 +98,11 @@ test("release workflow deploys, releases generic packages, and conditionally pub
     assert.match(workflow, /IMG_HUB_WECHAT_VERIFY_FILENAME/);
     assert.match(workflow, /IMG_HUB_WECHAT_VERIFY_CONTENT/);
     assert.match(workflow, /npm run test:local/);
-    assert.match(workflow, /npm run build:extension/);
+    assert.match(workflow, /npm run build:extension -- --version/);
+    assert.match(workflow, /GITHUB_REF_NAME/);
     assert.match(workflow, /gh release create/);
-    assert.match(workflow, /img-hub-extension-chromium/);
+    assert.match(workflow, /img-hub-extension-chrome/);
+    assert.match(workflow, /img-hub-extension-edge/);
     assert.match(workflow, /img-hub-extension-firefox/);
     assert.match(workflow, /CHROME_REFRESH_TOKEN/);
     assert.match(workflow, /EDGE_API_KEY/);

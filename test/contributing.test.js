@@ -19,6 +19,8 @@ test("contributor guides document development, tests, and manual verification in
         assert.match(guide, /npm run local:reset/);
         assert.match(guide, /http:\/\/localhost:8787/);
         assert.match(guide, /npm run build:extension/);
+        assert.match(guide, /dist\/extensions\/(?:chrome|edge)/);
+        assert.match(guide, /dist\/extensions\/firefox/);
         assert.match(guide, /npm run check:deploy/);
         assert.match(guide, /git commit -s/);
         assert.match(guide, /R2.*retention|R2.*保留/is);

@@ -191,7 +191,7 @@ npm run test:local
 # 验证 Worker bundle，但不部署
 npm run check:deploy
 
-# 构建通用 Chromium 和 Firefox 插件包
+# 构建 0.0.0-dev Chrome、Edge、Firefox 插件包
 npm run build:extension
 
 # 检查依赖漏洞
@@ -287,19 +287,30 @@ node --test test/lifecycle.test.js
 
 ## 手工测试浏览器插件
 
-构建两个插件版本：
+构建三个开发版本；迭代时也可只构建一个目标：
 
 ```sh
 npm run build:extension
+npm run build:extension:chrome
+npm run build:extension:edge
+npm run build:extension:firefox
 ```
 
 保持 `npm run dev:local` 运行，并让插件连接 `http://localhost:8787`：
 
-- Chrome 或 Edge：打开扩展管理页面，开启 Developer mode，选择 **Load unpacked**，加载 `dist/extensions/chromium/`。
+- Chrome：打开扩展管理页面，开启 Developer mode，选择 **Load unpacked**，加载 `dist/extensions/chrome/`。
+- Microsoft Edge：打开扩展管理页面，开启 Developer mode，选择 **Load unpacked**，加载 `dist/extensions/edge/`。
 - Firefox：打开 `about:debugging#/runtime/this-firefox`，选择 **Load Temporary Add-on**，加载 `dist/extensions/firefox/manifest.json`。
-- 在插件中配置本地地址，授予 host 权限，并使用测试账号登录。
-- 验证上传、刷新列表、复制 URL、替换、删除、退出、错误密码以及本地服务重启后的行为。
-- 修改共享弹窗代码或权限时，两个浏览器包都要测试。
+- 在插件中同时填写本地地址、用户名与密码，只点击一次 **Sign in**。确认登录成功后才保存 URL 与用户名、整个登录区域会隐藏，并且关闭后重新打开插件仍可直接使用。
+- 退出登录或使一次性本地 Session 失效，确认登录区域重新出现、URL 和用户名已回填、密码保持为空。
+- 未保存语言覆盖时，把浏览器第一首选语言依次设为英文和简体中文，并重新打开插件。确认所有静态标签、动态操作、状态、错误与确认文案都会跟随切换。手动切换 **EN / 中文** 后重新打开插件，确认选择会持久保存。
+- 依次切换 **上传文件**、**文本**、**外链**：选择文件、把文件拖到居中区域、粘贴复制的文件，再粘贴剪贴板图片，确认四种方式都会立即开始上传并自动复制最新结果 URL。在目录和文本编辑器中粘贴文字，确认不会误触发上传。随后发布 Markdown 与富文本并导入 HTTP(S) 文件，确认统一列表最多只显示最近 10 条。
+- 拖入文件上传期间，让插件失去焦点或以其他方式拒绝自动写入剪贴板。确认上传仍然成功、最近上传列表正常刷新，并显示本地化提示引导点击 **复制**，不能把剪贴板异常显示成上传失败。
+- 浏览器全屏时，从居中的文件选择区域选择文件。确认打开和关闭系统文件选择器，以及显示长短不同的选中文件反馈时，插件弹窗不会改变宽度或发生水平跳动。
+- 确认工具栏弹窗第一次绘制时就是固定的 780 像素宽，发布区域位于左栏，最近上传的 10 条记录位于右栏。不能先把最近上传显示在发布区域下方，再扩大窗口或重排布局。
+- 对本地资源列表请求进行限速，确认首次加载、刷新和发布后重新加载期间，“最近上传”卡片会显示居中的本地化加载蒙层与动画，并且请求成功或失败后都会移除蒙层。
+- 使用 **Open ImgHub** 打开配置的站点，再验证刷新、复制 URL、替换文件、删除可丢弃资源、错误密码和本地服务重启。
+- 确认三个未打包目录都显示开发版本 `0.0.0-dev`。修改共享弹窗或权限时必须测试三个浏览器包。
 
 `dist/extensions/` 中生成的文件只是测试产物，不应提交。
 
