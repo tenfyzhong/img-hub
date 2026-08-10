@@ -145,7 +145,7 @@ Build all three unpacked directories and ZIPs locally with `npm run build:extens
 
 ## Version releases and browser stores
 
-Set the application `package.json` to the release version, commit it, then push the matching tag, for example `v0.3.0`. The extension source keeps its development version at `0.0.0-dev`; `release.yml` derives the formal extension version from the tag, tests the project, builds the Chrome, Edge, and Firefox packages, deploys the tagged version to the repository's Cloudflare account when its credentials exist, and creates a GitHub Release with all three ZIP files.
+Set the application `package.json` to the release version, commit it, then push the matching tag, for example `v0.4.0`. The extension source keeps its development version at `0.0.0-dev`; `release.yml` derives the formal extension version from the tag, tests the project, builds the Chrome, Edge, and Firefox packages, deploys the tagged version to the repository's Cloudflare account when its credentials exist, and creates a GitHub Release with all three ZIP files.
 
 Browser store publishing runs only when a complete credential set is configured as Actions secrets:
 

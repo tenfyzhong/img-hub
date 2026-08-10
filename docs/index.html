@@ -176,7 +176,7 @@ npm run build:extension:firefox</code></pre>
 
       <section id="release">
         <h2>GitHub Release and store publication</h2>
-        <p>Set the application <code>package.json</code> version, merge the release to <code>main</code>, then push its matching tag such as <code>v0.3.0</code>. The extension source remains at <code>0.0.0-dev</code>; the release workflow derives its formal version from the tag, rejects tags outside <code>main</code>, tests, builds <code>img-hub-extension-chrome-*.zip</code>, <code>img-hub-extension-edge-*.zip</code>, and <code>img-hub-extension-firefox-*.zip</code>, deploys when configured, and creates a GitHub Release.</p>
+        <p>Set the application <code>package.json</code> version, merge the release to <code>main</code>, then push its matching tag such as <code>v0.4.0</code>. The extension source remains at <code>0.0.0-dev</code>; the release workflow derives its formal version from the tag, rejects tags outside <code>main</code>, tests, builds <code>img-hub-extension-chrome-*.zip</code>, <code>img-hub-extension-edge-*.zip</code>, and <code>img-hub-extension-firefox-*.zip</code>, deploys when configured, and creates a GitHub Release.</p>
         <p>Automatic store publication is enabled per complete secret set:</p>
         <ul>
           <li>Chrome: <code>CHROME_PUBLISHER_ID</code>, <code>CHROME_EXTENSION_ID</code>, <code>CHROME_CLIENT_ID</code>, <code>CHROME_CLIENT_SECRET</code>, <code>CHROME_REFRESH_TOKEN</code></li>
