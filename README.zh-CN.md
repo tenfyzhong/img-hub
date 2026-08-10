@@ -145,7 +145,7 @@ python3 skills/img-hub/scripts/img_hub.py list --kind file
 
 ## 版本发布与浏览器商店
 
-先把主应用 `package.json` 更新为发布版本并提交，再推送匹配 Tag，例如 `v0.3.0`。插件源码的开发版本始终为 `0.0.0-dev`；`release.yml` 会从 Tag 得出正式插件版本，运行测试并分别打包 Chrome、Edge、Firefox。若当前仓库配置了 Cloudflare 凭据，会部署 Tag 版本；随后创建包含三个 ZIP 的 GitHub Release。
+先把主应用 `package.json` 更新为发布版本并提交，再推送匹配 Tag，例如 `v0.4.0`。插件源码的开发版本始终为 `0.0.0-dev`；`release.yml` 会从 Tag 得出正式插件版本，运行测试并分别打包 Chrome、Edge、Firefox。若当前仓库配置了 Cloudflare 凭据，会部署 Tag 版本；随后创建包含三个 ZIP 的 GitHub Release。
 
 只有配置了完整 Actions Secrets 集合时，才自动发布对应浏览器商店：
 
