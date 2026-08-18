@@ -12,7 +12,7 @@ function createFixture(kind) {
         name: kind === "text" ? "item.txt" : "item.png",
         contentType: kind === "text" ? "text/plain; charset=utf-8" : "image/png",
         textFormat: kind === "text" ? "plain" : undefined,
-        version: 1754481600000,
+        version: 0,
         publicId: "0123456789abcdef0123456789abcdef",
     };
     const stored = new Map();
@@ -68,7 +68,7 @@ function createFixture(kind) {
 for (const kind of ["file", "text"]) {
     test(`versioned ${kind} reads check availability then use edge cache before R2`, async () => {
         const fixture = createFixture(kind);
-        const url = `https://images.example.com/pub/${fixture.route.publicId}?v=1754481600000`;
+        const url = `https://images.example.com/pub/${fixture.route.publicId}?v=0`;
         const first = await servePublicResource({
             request: new Request(url),
             ...fixture,
@@ -99,7 +99,7 @@ test("unversioned, mismatched-version, and HEAD reads bypass edge storage", asyn
     for (const request of [
         new Request(base),
         new Request(`${base}?v=999`),
-        new Request(`${base}?v=1754481600000`, { method: "HEAD" }),
+        new Request(`${base}?v=0`, { method: "HEAD" }),
     ]) {
         const response = await servePublicResource({ request, ...fixture });
         assert.equal(response.headers.get("X-ImgHub-Cache"), "BYPASS");
@@ -107,9 +107,27 @@ test("unversioned, mismatched-version, and HEAD reads bypass edge storage", asyn
     assert.deepEqual(fixture.calls, { metadata: 3, object: 3, put: 0 });
 });
 
+test("positive integer version query is cached correctly", async () => {
+    const fixture = createFixture("file");
+    const url = `https://images.example.com/pub/${fixture.route.publicId}?v=0`;
+    const first = await servePublicResource({
+        request: new Request(url),
+        ...fixture,
+    });
+    await Promise.all(fixture.pending);
+    const second = await servePublicResource({
+        request: new Request(url),
+        ...fixture,
+    });
+
+    assert.equal(first.status, 200);
+    assert.equal(first.headers.get("X-ImgHub-Cache"), "MISS");
+    assert.equal(second.headers.get("X-ImgHub-Cache"), "HIT");
+});
+
 test("a blocked resource cannot be served from an existing edge cache entry", async () => {
     const fixture = createFixture("file");
-    const url = `https://images.example.com/pub/${fixture.route.publicId}?v=1754481600000`;
+    const url = `https://images.example.com/pub/${fixture.route.publicId}?v=0`;
     const first = await servePublicResource({ request: new Request(url), ...fixture });
     await Promise.all(fixture.pending);
     assert.equal(first.status, 200);
@@ -126,7 +144,7 @@ test("a missing public resource returns the branded 404 document", async () => {
     const fixture = createFixture("file");
     fixture.deny();
     const response = await servePublicResource({
-        request: new Request(`https://images.example.com/pub/${fixture.route.publicId}?v=1754481600000`, {
+        request: new Request(`https://images.example.com/pub/${fixture.route.publicId}?v=0`, {
             headers: { "Accept-Language": "en-US,en;q=0.9" },
         }),
         ...fixture,

@@ -109,7 +109,7 @@ test("the complete Worker uses only local D1, R2, assets, and cache simulations"
     assert.equal(uploadResponse.status, 201);
     const uploaded = await uploadResponse.json();
     const publicPath = new URL(uploaded.resource.url).pathname + new URL(uploaded.resource.url).search;
-    assert.match(new URL(uploaded.resource.url).pathname, /^\/pub\/[a-f0-9]{32}$/);
+    assert.match(new URL(uploaded.resource.url).pathname, /^\/pub\/[0-9a-km-zA-NP-Z]{6}$/);
     assert.match(uploaded.resource.name, /^sample-\d{8}T\d{9}\.png$/);
     assert.doesNotMatch(uploaded.resource.url, /admin|integration|sample\.png/i);
 
@@ -218,7 +218,7 @@ test("the complete Worker uses only local D1, R2, assets, and cache simulations"
     assert.equal(userTextResponse.status, 201);
     const userText = await userTextResponse.json();
     assert.match(userText.resource.name, /^text-\d{8}T\d{9}\.md$/);
-    assert.match(new URL(userText.resource.url).pathname, /^\/pub\/[a-f0-9]{32}$/);
+    assert.match(new URL(userText.resource.url).pathname, /^\/pub\/[0-9a-km-zA-NP-Z]{6}$/);
     const userTextPath = new URL(userText.resource.url).pathname + new URL(userText.resource.url).search;
     const renderedText = await worker.fetch(userTextPath);
     assert.equal(renderedText.status, 200);

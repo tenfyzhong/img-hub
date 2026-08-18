@@ -252,7 +252,7 @@ Use this manual checklist for changes that affect user behavior:
 2. As the administrator, open the user-creation drawer and generate a temporary password. Confirm both password fields match, the value is copied immediately, and a success Toast disappears after about two seconds. Click **Copy password** again and confirm the button animates, the clipboard value matches, and the two-second Toast appears again; then create the regular user.
 3. Sign in as that user and confirm content operations are blocked until the password is changed.
 4. Change the password, sign in again, and create nested directories while uploading a file and publishing text.
-5. Confirm file and text public URLs both match `/pub/{32-character-random-id}?v=N`, include no `pub_` prefix, resource kind, username, directory, or file name, and retain the same random path after replacement. Open a missing `/pub/` URL and confirm the localized 404 page appears.
+5. Confirm file and text public URLs both match `/pub/{6-character-random-id}?v=N`, include no `pub_` prefix, resource kind, username, directory, or file name, and retain the same random path after replacement. Open a missing `/pub/` URL and confirm the localized 404 page appears.
 6. Open a public URL twice. In browser developer tools, confirm the first versioned GET reports `X-ImgHub-Cache: MISS` and a repeated GET can report `HIT`. Unversioned or incorrect versions should report `BYPASS`.
 7. Replace file and text content. Confirm the path stays unchanged, `?v=` increments, and the new URL returns the new content.
 8. Delete each resource and confirm it disappears from the owner's list and its public URL no longer resolves.
@@ -272,7 +272,7 @@ To inspect cache headers without a browser, use a current public URL returned by
 
 ```sh
 curl --silent --show-error --dump-header - --output /dev/null \
-  'http://localhost:8787/pub/REPLACE_WITH_CURRENT_32_CHARACTER_ID?v=1'
+  'http://localhost:8787/pub/REPLACE_WITH_CURRENT_ID?v=0'
 ```
 
 ### R2 backend retention

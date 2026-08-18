@@ -35,18 +35,25 @@ test("builds isolated R2 keys for files and text", () => {
 
 test("public URLs use an opaque identifier and never reveal ownership or storage paths", () => {
     const publicId = "0123456789abcdef0123456789abcdef";
+    const shortPublicId = "aB3k9Z";
     assert.equal(
-        buildPublicUrl("https://img.example.com", publicId, 1754481600000),
-        `https://img.example.com/pub/${publicId}?v=1754481600000`,
+        buildPublicUrl("https://img.example.com", publicId, 0),
+        `https://img.example.com/pub/${publicId}?v=0`,
     );
     assert.equal(
-        buildPublicUrl("https://img.example.com/", publicId, 1754481600000),
-        `https://img.example.com/pub/${publicId}?v=1754481600000`,
+        buildPublicUrl("https://img.example.com/", shortPublicId, 1),
+        `https://img.example.com/pub/${shortPublicId}?v=1`,
     );
     assert.throws(() => buildPublicUrl(
         "https://img.example.com", "not-public", 1,
     ), /invalid public identifier/i);
     assert.throws(() => buildPublicUrl(
         "https://img.example.com", `pub_${publicId}`, 1,
+    ), /invalid public identifier/i);
+    assert.throws(() => buildPublicUrl(
+        "https://img.example.com", "short", 1,
+    ), /invalid public identifier/i);
+    assert.throws(() => buildPublicUrl(
+        "https://img.example.com", "with_l", 1,
     ), /invalid public identifier/i);
 });

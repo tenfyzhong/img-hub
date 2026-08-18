@@ -1,3 +1,4 @@
+import { randomBase60 } from "./base60.js";
 import { AppError, requireActiveUser, requireAdministrator, requireOwner } from "./errors.js";
 import { buildObjectKey, buildPublicUrl, normalizeDirectory, sanitizeFileName } from "./paths.js";
 import { normalizePageOptions, paginated } from "./pagination.js";
@@ -12,7 +13,7 @@ function createId() {
 }
 
 function createPublicId() {
-    return crypto.randomUUID().replaceAll("-", "");
+    return randomBase60(6);
 }
 
 function createEvent(resource, action, sourceUrl = null, resourceId = resource.id) {
@@ -99,7 +100,7 @@ export function createResourceService(repository, bucket, now = () => new Date()
                 contentMd5,
                 textFormat,
                 size,
-                version: now().getTime(),
+                version: 0,
             };
             try {
                 await repository.create(resource);
@@ -198,7 +199,7 @@ export function createResourceService(repository, bucket, now = () => new Date()
             if (input.kind && input.kind !== resource.kind) {
                 throw new AppError(400, "Replacement must keep the existing resource type", "resource_type_mismatch");
             }
-            const version = now().getTime();
+            const version = (Number(resource.version) || 0) + 1;
             const contentType = input.contentType || resource.contentType;
             const textFormat = resource.kind === "text"
                 ? normalizeTextFormat(input.textFormat || resource.textFormat)
