@@ -119,8 +119,9 @@ test("uploads are stored under the creator's isolated file root", async () => {
     assert.equal(resource.createdBy, alice.id);
     assert.match(resource.name, /^lake-\d{8}T\d{9}\.png$/);
     assert.equal(resource.objectKey, `users/usr_alice/file/trips/2026/${resource.name}`);
-    assert.match(resource.publicId, /^[a-f0-9]{32}$/);
-    assert.equal(resource.url, `https://img.example.com/pub/${resource.publicId}?v=${resource.version}`);
+    assert.match(resource.publicId, /^[0-9a-km-zA-NP-Z]{6}$/);
+    assert.equal(resource.version, 0);
+    assert.equal(resource.url, `https://img.example.com/pub/${resource.publicId}?v=0`);
     assert.doesNotMatch(resource.url, /alice|trips|lake/i);
     assert.ok(memory.objects.has(resource.objectKey));
     assert.equal(memory.events[0].action, "upload");
@@ -162,9 +163,7 @@ test("MD5 instant upload copies only the current user's matching object", async 
     const memory = createMemoryResources();
     const times = [
         new Date("2026-08-06T04:05:06.123Z"),
-        new Date("2026-08-06T04:05:06.124Z"),
         new Date("2026-08-06T04:05:07.456Z"),
-        new Date("2026-08-06T04:05:07.457Z"),
     ];
     const service = createResourceService(memory.repository, memory.bucket, () => times.shift());
     const source = await service.create(alice, {
@@ -274,7 +273,7 @@ test("replacement keeps the object path and increments the cache version", async
         directory: "trips",
         name: "lake.png",
         contentType: "image/png",
-        version: 1754481600000,
+        version: 0,
         publicId: "0123456789abcdef0123456789abcdef",
     });
     const service = createResourceService(memory.repository, memory.bucket);
@@ -287,8 +286,8 @@ test("replacement keeps the object path and increments the cache version", async
     });
 
     assert.equal(updated.objectKey, "users/usr_alice/file/trips/lake.png");
-    assert.ok(updated.version > 1754481600000);
-    assert.equal(updated.url, `https://img.example.com/pub/0123456789abcdef0123456789abcdef?v=${updated.version}`);
+    assert.equal(updated.version, 1);
+    assert.equal(updated.url, "https://img.example.com/pub/0123456789abcdef0123456789abcdef?v=1");
     assert.equal(memory.events.at(-1).action, "replace");
 });
 
@@ -383,7 +382,7 @@ test("administrators audit every resource with its uploader and public link", as
         directory: "review",
         name: "item.txt",
         contentType: "text/plain; charset=utf-8",
-        version: 1754481600000,
+        version: 0,
         publicId: "11111111111111111111111111111111",
     });
     const service = createResourceService(memory.repository, memory.bucket);
@@ -392,7 +391,7 @@ test("administrators audit every resource with its uploader and public link", as
     const resources = await service.listForAudit(admin, "https://img.example.com");
 
     assert.equal(resources[0].ownerUsername, "alice");
-    assert.equal(resources[0].url, "https://img.example.com/pub/11111111111111111111111111111111?v=1754481600000");
+    assert.equal(resources[0].url, "https://img.example.com/pub/11111111111111111111111111111111?v=0");
 });
 
 test("administrator content audit is searched and paginated", async () => {
@@ -452,7 +451,7 @@ test("upload history remains available as a time-ordered activity stream", async
 
     const history = await service.listHistory(alice, "https://img.example.com");
     assert.deepEqual(history.map((event) => event.action), ["upload", "replace", "delete"]);
-    assert.equal(history[0].url, `https://img.example.com/pub/${created.publicId}?v=${created.version}`);
+    assert.equal(history[0].url, `https://img.example.com/pub/${created.publicId}?v=0`);
     assert.equal(history[2].resourceDeleted, true);
 });
 

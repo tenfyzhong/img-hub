@@ -239,17 +239,17 @@ npm run admin:reset -- --remote --database YOUR_D1_DATABASE_NAME</code></pre>
       <section id="paths">
         <h2>Isolation, paths, and replacement</h2>
         <pre><code>users/{user-id}/file/trips/lake-20260806T040506123.png
-/pub/7b62f18c6d304476a5edc8a4de176cb1?v=1
+/pub/CBgF00?v=0
 
 users/{user-id}/text/notes/hello-20260806T040506123.md
-/pub/91ac1f75e0c84353bb9eca92c4f828a0?v=1</code></pre>
-        <p>Each user ID owns separate internal file and text roots, while files and text share one <code>/pub/{32-character-opaque-id}</code> public route. The ID has no <code>pub_</code> prefix. Resource kinds, usernames, directories, and names are not exposed. Former root, <code>/file/</code>, <code>/text/</code>, prefixed IDs, and username-based public paths are unsupported. Replacement retains the object key and random public path, increments D1's version, and returns a new <code>?v=</code> value.</p>
+/pub/91ac1f?v=0</code></pre>
+        <p>Each user ID owns separate internal file and text roots, while files and text share one <code>/pub/{6-character-opaque-id}</code> public route. The ID has no <code>pub_</code> prefix. Resource kinds, usernames, directories, and names are not exposed. Former root, <code>/file/</code>, <code>/text/</code>, prefixed IDs, and username-based public paths are unsupported. Replacement retains the object key and random public path, increments D1's version, and returns a new <code>?v=</code> value.</p>
         <p>The <strong>Upload &amp; publish</strong> entry provides equal-height tabs for file upload, text publishing, and remote-file import, with the import tab last. New file and text names receive a millisecond UTC timestamp; a blank text name is generated from its format, and text results provide the same URL/Markdown/HTML copy actions as files. Before direct upload, the browser calculates MD5 in chunks; a same-user, same-size match is copied to an independent R2 object without sending the file again. Remote import accepts images, documents, archives, audio, video, text, and other HTTP(S) files while retaining private-network and size checks. The enlarged drop zone opens the picker when clicked and accepts dragged files, pasted files, and clipboard images; uploads start immediately with progress. Remote imports stream real fetched-byte progress, use an indeterminate bar when the source omits its length, and then report the storage-saving stage. The separate <strong>Manage</strong> entry mixes files and texts in one resource list and root directory tree, with directory filtering, grid/list views, URL/Markdown/HTML copy, replacement, and deletion. The publishing UI supports Markdown and restricted rich text with equal-sized editor frames. Manager cards preview text, while oversized or unusually tall images remain contained inside the card. A durable timeline records uploads, imports, replacements, and deletions.</p>
       </section>
 
       <section id="cache">
         <h2>Cached file and text reads</h2>
-        <p>GET requests with the current version, such as <code>/pub/7b62…?v=3</code>, use <code>caches.default</code>. A small D1 availability check runs first so moderation and disabled accounts override old cache entries; an allowed hit then skips the large R2 object read. Invalid, missing, deleted, blocked, and expired resources receive the localized ImgHub 404 page without revealing which case occurred.</p>
+        <p>GET requests with the current version, such as <code>/pub/CBgF00…?v=2</code>, use <code>caches.default</code>. A small D1 availability check runs first so moderation and disabled accounts override old cache entries; an allowed hit then skips the large R2 object read. Invalid, missing, deleted, blocked, and expired resources receive the localized ImgHub 404 page without revealing which case occurred.</p>
         <p>The response header is <code>X-ImgHub-Cache: MISS</code> when content is stored, <code>HIT</code> when served from cache, and <code>BYPASS</code> for an unversioned URL, incorrect version, extra query parameters, or HEAD. Current positive numeric versions receive one-year shared-cache retention, while browser <code>max-age=0</code> preserves the moderation check. Cache API entries are local to each Cloudflare data center.</p>
       </section>
 

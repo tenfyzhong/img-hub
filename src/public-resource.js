@@ -18,9 +18,13 @@ function cacheCandidate(request) {
     if (url.searchParams.size !== 1 || versions.length !== 1 || !/^\d+$/.test(versions[0])) {
         return null;
     }
+    const version = Number(versions[0]);
+    if (!Number.isSafeInteger(version) || version < 0) {
+        return null;
+    }
     return {
         key: new Request(url.toString(), { method: "GET" }),
-        version: Number(versions[0]),
+        version,
     };
 }
 

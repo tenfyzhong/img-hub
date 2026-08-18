@@ -179,7 +179,7 @@ Keep route handling thin. Put reusable authorization, validation, persistence, o
 - Every resource row records `created_by`.
 - A user may list, replace, and delete only their own resources.
 - R2 keys are isolated beneath `users/{user-id}/file/` and `users/{user-id}/text/`.
-- Files and text share the single public route `/pub/{32-character-opaque-public-id}`. Public IDs are lowercase hexadecimal without a `pub_` prefix. Generated URLs must not expose the resource kind, usernames, internal directories, or file names. Do not serve the former root, `/file/`, `/text/`, prefixed-ID, or username-based public routes.
+- Files and text share the single public route `/pub/{6-character-opaque-public-id}`. Public IDs are Base60 without a `pub_` prefix. Generated URLs must not expose the resource kind, usernames, internal directories, or file names. Do not serve the former root, `/file/`, `/text/`, prefixed-ID, or username-based public routes.
 - `resource_sharing` owns opaque public IDs and text formats so schema initialization remains idempotent across Deploy button, CLI, and GitHub deployment paths.
 - New file and text names contain millisecond UTC timestamps; a blank text name is generated from its format.
 - `resource_hashes` stores owner-scoped MD5 metadata for instant upload. Never match another user's hash, and always copy a match into an independent R2 object so replacement, deletion, moderation, and retention remain resource-local.
