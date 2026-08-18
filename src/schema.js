@@ -92,7 +92,7 @@ const SCHEMA_STATEMENTS = [
         updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )`,
     `INSERT OR IGNORE INTO resource_sharing (resource_id, public_id, text_format)
-        SELECT id, 'pub_' || lower(hex(randomblob(16))), 'plain' FROM resources`,
+        SELECT id, lower(hex(randomblob(16))), 'plain' FROM resources`,
     `INSERT OR IGNORE INTO resource_events
         (id, created_by, resource_id, action, kind, public_id, directory,
             name, version, source_url, created_at)
