@@ -15,8 +15,8 @@ ImgHub is a multi-user file and text hub built only for Cloudflare Workers, D1, 
 - Every password-setting form requires confirmation and supports show/hide controls. Administrators can generate and copy strong temporary passwords.
 - Every D1 resource row records its creator. Users can only list, replace, or delete their own resources.
 - Each user has isolated R2 roots: `users/{user-id}/file/` and `users/{user-id}/text/`.
-- Files and text share opaque public paths such as `/pub/7b62…`; the resource kind, username, directory, and file name are not exposed. Former root, `/file/`, `/text/`, prefixed `pub_` IDs, and username-based public paths are not supported.
-- Replacing content keeps the opaque public path and R2 object key. Only the cache version changes, for example `/pub/7b62…?v=2`.
+- Files and text share opaque public paths such as `/pub/CBgF00…`; the resource kind, username, directory, and file name are not exposed. Former root, `/file/`, `/text/`, prefixed `pub_` IDs, and username-based public paths are not supported.
+- Replacing content keeps the opaque public path and R2 object key. Only the cache version changes, for example `/pub/CBgF00…?v=1`.
 - The **Upload** workspace has a full-width row of three equal-height tabs for file upload, text publishing, and remote-file import. The separate **Manage** entry presents files and texts together in one directory tree and resource library.
 - File selection, drag-and-drop, and pasting files or clipboard images start uploads immediately with progress. Uploaded and historical items can copy raw URL, Markdown, or HTML snippets.
 - New file and text names include a millisecond UTC timestamp so the same original name can be published repeatedly. A text name is optional and generated from its format; text results expose the same URL, Markdown, and HTML copy actions as file uploads.
@@ -228,14 +228,14 @@ users/{alice-user-id}/file/trips/2026/lake-20260806T040506123.png
 and published as:
 
 ```text
-/pub/7b62f18c6d304476a5edc8a4de176cb1?v=1
+/pub/CBgF00?v=0
 ```
 
 Text follows the same model:
 
 ```text
 users/{alice-user-id}/text/notes/hello-20260806T040506123.md
-/pub/91ac1f75e0c84353bb9eca92c4f828a0?v=1
+/pub/91ac1f?v=0
 ```
 
 Subdirectories are virtual R2 prefixes. `.` and `..` segments are rejected. New names receive a millisecond UTC timestamp before their extension; blank text names become timestamped `.md` or `.html` names. D1 maps each resource to a random public ID, so its URL reveals none of the internal path. A replacement writes to the same R2 key, increments the D1 version, and returns the same public path with a new `?v=` parameter. Deletion removes the R2 object and resource metadata while retaining its activity event.
@@ -244,7 +244,7 @@ Non-image files are served as downloads. Legacy or API-created plain text is ser
 
 ### Public read caching
 
-Correctly versioned GET requests such as `/pub/7b62…?v=3` are stored with the Cloudflare Cache API through `caches.default`. Every request first performs a small D1 availability check so blocked content and disabled accounts cannot bypass moderation through an old cache entry. An allowed cache hit then avoids the R2 object read. Responses expose `X-ImgHub-Cache: MISS` on the first read and `HIT` on a cached read. Invalid, missing, deleted, blocked, and expired public resources return the localized ImgHub 404 page without exposing the reason.
+Correctly versioned GET requests such as `/pub/CBgF00…?v=2` are stored with the Cloudflare Cache API through `caches.default`. Every request first performs a small D1 availability check so blocked content and disabled accounts cannot bypass moderation through an old cache entry. An allowed cache hit then avoids the R2 object read. Responses expose `X-ImgHub-Cache: MISS` on the first read and `HIT` on a cached read. Invalid, missing, deleted, blocked, and expired public resources return the localized ImgHub 404 page without exposing the reason.
 
 Only a single positive numeric `v` matching the current D1 version is stored. Unversioned URLs, incorrect versions, additional query parameters, and HEAD requests return `X-ImgHub-Cache: BYPASS`; this avoids unbounded cache-key pollution. Versioned responses use one-year shared-cache retention, while browser `max-age=0` requires the moderation check on every visit. Replacement returns a new version URL, so it misses the old cache without changing the stable path.
 
