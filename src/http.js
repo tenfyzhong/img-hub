@@ -31,7 +31,7 @@ export function routePublicResource(pathname) {
     const rawParts = pathname.split("/").filter(Boolean);
     if (rawParts.length !== 2
         || rawParts[0] !== "pub"
-        || !/^[a-f0-9]{32}$/.test(rawParts[1])) {
+        || !/^[0-9a-km-zA-NP-Z]{6,32}$/.test(rawParts[1])) {
         return null;
     }
     return { publicId: rawParts[1] };
