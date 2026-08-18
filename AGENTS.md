@@ -32,12 +32,26 @@ npm ci
 
 ## Git workflow
 
-ImgHub uses a lightweight Git Flow:
+Agents must strictly follow the branch management and release workflow in `CONTRIBUTING.md` and `CONTRIBUTING.zh-CN.md`:
+
+```text
+feature/* ──PR──> develop ──release PR──> main ──v* tag──> GitHub Release
+                    │                       │                 │
+                    └── CI only             └── deploy        └── deploy and package extensions
+
+hotfix/* (from main) ──PR──> main ──merge back──> develop
+upstream/main ──Sync fork──> fork/main ──verify──> fork Cloudflare deployment
+```
 
 - `main` is always stable and deployable. Fork users synchronize this branch.
 - `develop` integrates the next version and never deploys to production.
-- `feature/*`, `fix/*`, and `docs/*` branch from `develop` and target `develop`.
-- `release/*` stabilizes a release and targets `main`.
+- `feature/*`, `fix/*`, and `docs/*` MUST branch from `develop` and target `develop` via Pull Request. Never target `main` directly for feature or fix contributions.
+- Standard release lifecycle MUST follow this sequence:
+  1. Feature/fix PRs are developed from `develop` and merged into `develop` first.
+  2. Create a release branch `release/vX.Y.Z` (or `release/X.Y.Z`), bump version in `package.json` and `package-lock.json`, update documentation and tests, and verify the full suite.
+  3. Open a release Pull Request targeting `main`.
+  4. After the release PR is merged into `main`, create the matching signed `vX.Y.Z` tag on `main` (`git tag -s vX.Y.Z -m "release: version X.Y.Z"`) and push the tag to trigger GitHub Release and extension publication.
+  5. Create a sync PR to merge `main` and the version bump back into `develop`.
 - `hotfix/*` branches from `main`, targets `main`, and must be merged back to `develop`.
 - Formal `v*` tags must point to commits contained in `main` and match `package.json`.
 
@@ -52,7 +66,6 @@ git commit -s -m "type: concise description"
 ```
 
 Never force-push `main` or `develop`. Never put development-only code on `main`.
-
 ## Test-driven development
 
 Features, fixes, refactors, and behavior changes require TDD:
