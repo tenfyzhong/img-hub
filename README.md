@@ -44,7 +44,7 @@ Automatic resource provisioning is a current Wrangler feature. If your Cloudflar
 
 ## Deployment option 2: one-command CLI deployment
 
-Requirements: Node.js 22 or newer and a Cloudflare account.
+Requirements: Node.js 22.23.4 (see `.node-version`) and a Cloudflare account.
 
 ```sh
 git clone https://github.com/tenfyzhong/img-hub.git

@@ -44,7 +44,7 @@ ImgHub 是一个只使用 Cloudflare Workers、D1 和 R2 的多用户文件与�
 
 ## 部署方式二：命令行一键部署
 
-要求安装 Node.js 22 或更高版本，并准备一个 Cloudflare 账号。
+要求安装 Node.js 22.23.4（见 `.node-version`），并准备一个 Cloudflare 账号。
 
 ```sh
 git clone https://github.com/tenfyzhong/img-hub.git

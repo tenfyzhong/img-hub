@@ -15,7 +15,7 @@ Thank you for helping improve ImgHub. This guide describes the expected developm
 ## Requirements
 
 - Git
-- Node.js 22 or newer
+- Node.js 22.23.4 (see `.node-version`)
 - npm, included with Node.js
 - Chrome, Edge, or Firefox when changing the browser extension
 
