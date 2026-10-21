@@ -267,3 +267,15 @@ test("CI keeps development on develop and validates release-only pull requests t
     assert.match(workflow, /develop\|release\/\*\|hotfix\/\*/);
     assert.doesNotMatch(workflow, /secrets\.|CLOUDFLARE_API_TOKEN|CLOUDFLARE_ACCOUNT_ID/);
 });
+
+
+test("development and workflow tooling use the patched Node.js release", async () => {
+    const version = (await readFile(new URL("../.node-version", import.meta.url), "utf8")).trim();
+    assert.equal(version, "22.23.4");
+    for (const name of ["ci", "deploy", "release", "destroy-cloudflare", "reset-admin-password"]) {
+        const workflow = await readFile(new URL(`../.github/workflows/${name}.yml`, import.meta.url), "utf8");
+        const versions = [...workflow.matchAll(/node-version: ["']?([0-9.]+)["']?/g)].map((match) => match[1]);
+        assert.ok(versions.length > 0, `${name} must select a Node.js version`);
+        assert.ok(versions.every((value) => value === version), `${name} must use ${version}`);
+    }
+});

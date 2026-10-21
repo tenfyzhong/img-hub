@@ -15,7 +15,7 @@
 ## 环境要求
 
 - Git
-- Node.js 22 或更高版本
+- Node.js 22.23.4（见 `.node-version`）
 - Node.js 自带的 npm
 - 修改浏览器插件时需要 Chrome、Edge 或 Firefox
 

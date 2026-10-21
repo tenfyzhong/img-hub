@@ -17,7 +17,7 @@ Do not introduce another messaging, repository-backed, or third-party storage pr
 ## Environment and tools
 
 - Shell: fish. Keep documented shell examples portable when practical.
-- Runtime: Node.js 22 or newer.
+- Runtime: Node.js 22.23.4 (see `.node-version`).
 - Module system: native ECMAScript modules (`"type": "module"`).
 - Package manager: npm; use `npm ci` when validating the lockfile.
 - Prefer `rg` and `rg --files` for repository searches.
