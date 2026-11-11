@@ -17,7 +17,7 @@ Do not introduce another messaging, repository-backed, or third-party storage pr
 ## Environment and tools
 
 - Shell: fish. Keep documented shell examples portable when practical.
-- Runtime: Node.js 22 or newer.
+- Runtime: Node.js 22.23.4 (see `.node-version`).
 - Module system: native ECMAScript modules (`"type": "module"`).
 - Package manager: npm; use `npm ci` when validating the lockfile.
 - Prefer `rg` and `rg --files` for repository searches.
@@ -156,6 +156,7 @@ src/resource-name.js            timestamped and generated resource names
 src/pagination.js               bounded administrator paging/search helpers
 src/public-resource.js          public responses and Cache API integration
 src/site-settings-service.js    public/admin appearance settings
+src/wechat-verification-service.js administrator verification file and public text response
 src/http.js / src/paths.js      HTTP guards, routes, names, and path safety
 public/                         dependency-free browser UI
 public/i18n.js                  English/Chinese catalogs and locale selection

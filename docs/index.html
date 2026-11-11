@@ -256,6 +256,9 @@ users/{user-id}/text/notes/hello-20260806T040506123.md
       <section id="appearance">
         <h2>Administrator site appearance</h2>
         <p>Open the separate <strong>Site settings</strong> administrator menu to configure the site title, tagline, welcome title, and welcome description. Values are kept in D1, have explicit length limits, and are rendered as plain text. Installations without saved values use the built-in defaults.</p>
+        <h3>WeChat verification</h3>
+        <p>Administrators can open <strong>Site settings → WeChat site verification</strong>, enter the <code>.txt</code> filename and exact content supplied by WeChat, and save. Anonymous <code>GET /{filename}</code> returns UTF-8 plain text immediately, without an added newline or caching; no redeployment or Cloudflare credentials are needed. The filename starts with a letter or number, followed by up to 127 letters, numbers, <code>_</code> or <code>-</code>, then <code>.txt</code>; <code>robots.txt</code> is reserved. Content is limited to 4096 characters and is public. Clear both fields and save to disable the runtime file; renaming removes the previous runtime URL. Settings persist in D1 as one pair. A matching runtime file takes precedence over the optional deployment-provided file. Clearing runtime settings does not remove a deployment-provided file: remove its repository variables and redeploy to remove that static copy.</p>
+        <p>Administrators can configure a favicon URL under Site settings → Site appearance. Use a public HTTPS image URL or a site-relative path (for example, /pub/Abc123?v=1), up to 2048 characters. Saving updates the browser tab icon immediately; clearing the field restores the built-in ImgHub icon. The setting persists in D1 and applies to signed-out visitors too.</p>
       </section>
 
       <section id="local">

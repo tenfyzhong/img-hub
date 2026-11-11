@@ -15,7 +15,7 @@ Thank you for helping improve ImgHub. This guide describes the expected developm
 ## Requirements
 
 - Git
-- Node.js 22 or newer
+- Node.js 22.23.4 (see `.node-version`)
 - npm, included with Node.js
 - Chrome, Edge, or Firefox when changing the browser extension
 
@@ -236,6 +236,10 @@ Remote recovery requires `npm run admin:reset -- --remote --database <D1_DATABAS
 
 Changes to `.github/workflows/reset-admin-password.yml` should be validated by `test/admin-recovery.test.js`. Do not dispatch that workflow merely to test YAML: a live run directly changes the selected D1 database, revokes administrator credentials, and requires explicit authorization plus a disposable deployment.
 
+### Favicon testing
+
+In Site appearance, verify the default ImgHub tab icon before configuration. Save a public image URL, confirm the tab icon updates immediately and survives reload/sign-out, then clear it and confirm the default returns. Repeat in English/Chinese on desktop/mobile; invalid URLs must be rejected without changing saved settings.
+
 ### Language testing
 
 Clear the `img-hub-language` local storage key and change the browser's first preferred language. Confirm a `zh` locale opens the Chinese UI and another locale opens English. Then use **EN / 中文**, reload, and confirm the explicit choice persists. Check setup, login, forced password change, all three Upload tabs, the unified resource manager, Security, Administration, dynamic messages, errors, confirmation dialogs, and mobile navigation in both languages. Administrator-configured site appearance is intentionally shared across languages; built-in unsaved welcome copy is localized.
@@ -284,6 +288,10 @@ node --test test/lifecycle.test.js
 ```
 
 Do not trigger retention against deployed R2 data during routine testing. Use the repository R2 double or an explicitly isolated local Wrangler state; only use disposable live data when the user explicitly authorizes it.
+
+### WeChat verification checklist
+
+In both English and Chinese, on desktop and mobile, open Site settings and save a placeholder filename/content pair. Reload and verify both values persist; anonymously GET the root URL and compare the exact plain-text body. Modify the content, rename the file, then clear both fields; verify immediate changes and 404 for removed runtime files. Reject a directory filename, partial pair, ordinary-user request, API-key request, and cross-origin update. Verify existing static verification files still work and follow the documented precedence when a runtime filename matches.
 
 ## Manual browser extension testing
 

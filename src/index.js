@@ -13,6 +13,7 @@ import { createResourceService } from "./resource-service.js";
 import { createRetentionService } from "./retention-service.js";
 import { ensureSchema } from "./schema.js";
 import { createSiteSettingsService } from "./site-settings-service.js";
+import { createWechatVerificationService, isVerificationPath } from "./wechat-verification-service.js";
 import { ADMIN_USERNAME, createUserService } from "./user-service.js";
 import { contentTypeForText, normalizeTextFormat } from "./text-format.js";
 
@@ -411,6 +412,16 @@ async function handleApi(request, env, repositories) {
         const body = await readJson(request);
         return json({ site: await siteSettingsService.update(session.user, body) });
     }
+    if (["GET", "PUT"].includes(request.method) && path === "/api/admin/wechat-verification") {
+        if (session.authType !== "session") {
+            throw new AppError(403, "A browser login session is required", "session_required");
+        }
+        const service = createWechatVerificationService(repositories.settings);
+        const verification = request.method === "GET"
+            ? await service.get(session.user)
+            : await service.update(session.user, await readJson(request));
+        return json({ verification });
+    }
     if (["GET", "PUT"].includes(request.method) && path === "/api/admin/retention") {
         if (session.authType !== "session") {
             throw new AppError(403, "A browser login session is required", "session_required");
@@ -428,19 +439,31 @@ async function handleApi(request, env, repositories) {
 
 async function handleRequest(request, env, context) {
     const url = new URL(request.url);
+    const verificationPath = isVerificationPath(url.pathname);
     const publicRoute = routePublicResource(url.pathname);
     const publicNamespace = url.pathname === "/pub" || url.pathname.startsWith("/pub/");
     const retiredPublicPath = /^\/(?:file|text)(?:\/|$)/.test(url.pathname)
         || /^\/pub_[^/]*(?:\/|$)/.test(url.pathname);
-    if ((publicNamespace && !publicRoute) || retiredPublicPath) {
+    if ((publicNamespace && !publicRoute) || (retiredPublicPath && !verificationPath)) {
         return publicNotFound(request);
     }
-    const needsData = url.pathname.startsWith("/api/") || Boolean(publicRoute);
+    const needsData = url.pathname.startsWith("/api/") || Boolean(publicRoute) || verificationPath;
     if (!needsData) {
         return env.ASSETS.fetch(request);
     }
     await ensureSchema(env.DB);
     const repositories = createRepositories(env.DB);
+
+    if (verificationPath) {
+        const response = await createWechatVerificationService(repositories.settings).serve(request);
+        if (response) return response;
+        // Preserve deployment-provided .txt assets, but never return the SPA for a missing file.
+        const asset = await env.ASSETS.fetch(request);
+        if (asset.ok && asset.headers.get("Content-Type")?.split(";", 1)[0] === "text/plain") {
+            return asset;
+        }
+        return publicNotFound(request);
+    }
 
     if (publicRoute && ["GET", "HEAD"].includes(request.method)) {
         return servePublicResource({

@@ -49,3 +49,9 @@ test("every static interface translation marker exists in both catalogs", async 
         assert.ok(Object.hasOwn(translations["zh-CN"], key), `missing Chinese translation: ${key}`);
     }
 });
+
+test("site settings validation errors are translated in both languages", () => {
+    for (const language of ["en", "zh-CN"]) {
+        assert.notEqual(translate(language, "error.invalid_site_settings"), "error.invalid_site_settings");
+    }
+});

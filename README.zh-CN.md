@@ -6,6 +6,13 @@ ImgHub 是一个只使用 Cloudflare Workers、D1 和 R2 的多用户文件与�
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/tenfyzhong/img-hub)
 
+## v0.6.0
+
+- 可在站点设置中配置根目录微信验证文本文件，保存后立即生效，无需重新部署。
+- 可在站点外观中配置浏览器 favicon，未配置时使用 ImgHub 原创默认图标。
+- 本地与 CI 工具链固定为 Node.js 22.23.4。
+- 保留现有账号、资源和公开 URL。运行时设置使用现有 D1 设置表，无需新增迁移。
+
 ## 功能
 
 - 首次启动时创建管理员，不使用共享上传认证码。
@@ -44,7 +51,7 @@ ImgHub 是一个只使用 Cloudflare Workers、D1 和 R2 的多用户文件与�
 
 ## 部署方式二：命令行一键部署
 
-要求安装 Node.js 22 或更高版本，并准备一个 Cloudflare 账号。
+要求安装 Node.js 22.23.4（见 `.node-version`），并准备一个 Cloudflare 账号。
 
 ```sh
 git clone https://github.com/tenfyzhong/img-hub.git
@@ -253,6 +260,12 @@ Cloudflare Cache API 的内容只存在于处理请求的数据中心，不会�
 ## 站点外观配置
 
 管理员可进入独立的 **站点设置** 菜单配置站点标题、标语、欢迎标题和欢迎说明。配置保存在 D1，服务端验证长度，前端只通过 `textContent` 渲染，不会作为 HTML 执行。未配置时自动使用内置默认值。
+
+管理员可在 **站点设置 → 站点外观** 配置站点图标地址。支持可公开访问的 HTTPS 图片地址或站内路径（例如 `/pub/Abc123?v=1`），最多 2048 个字符。保存后立即更新浏览器标签页图标；清空并保存可恢复内置 ImgHub 图标。配置保存在 D1，对未登录访客也生效。
+
+### 微信站点验证
+
+管理员可进入 **站点设置 → 微信站点验证**，填写微信提供的 `.txt` 文件名和原始内容后保存。匿名 `GET /{文件名}` 会立即返回 UTF-8 纯文本，不额外添加换行、不缓存，无需重新部署或提供 Cloudflare 凭据。文件名以字母或数字开头，后接最多 127 个字母、数字、`_` 或 `-`，最后为 `.txt`；`robots.txt` 为保留名称。内容最多 4096 个字符，且会公开访问。同时清空两项并保存可停用运行时文件，修改文件名后旧运行时 URL 失效。配置成对保存在 D1。运行时文件优先于同名的部署时文件；清空运行时配置不会删除部署时文件，如需移除静态副本，请删除对应的 Repository Variables 并重新部署。
 
 ## R2 保留策略
 

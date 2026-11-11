@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="A private, multi-user file and text hub powered by Cloudflare.">
   <title>ImgHub</title>
+  <link id="site-favicon" rel="icon" href="/favicon.svg">
   <link rel="stylesheet" href="/styles.css">
   <script src="/app.js" type="module"></script>
 </head>
@@ -311,7 +312,20 @@
                 <label><span data-i18n="appearance.tagline">Tagline</span><input name="siteTagline" maxlength="100" required></label>
                 <label><span data-i18n="appearance.welcomeTitle">Welcome title</span><input name="welcomeTitle" maxlength="120" required></label>
                 <label><span data-i18n="appearance.welcomeDescription">Welcome description</span><textarea name="welcomeDescription" rows="4" maxlength="240" required></textarea></label>
+                <label><span data-i18n="appearance.faviconUrl">Favicon URL</span><input name="faviconUrl" maxlength="2048" aria-describedby="favicon-hint" placeholder="https://example.com/favicon.png" data-i18n-placeholder="appearance.faviconPlaceholder"></label>
+                <p id="favicon-hint" class="muted" data-i18n="appearance.faviconHint">Use a public HTTPS image URL or a site-relative path. Leave blank to use the default ImgHub icon.</p>
                 <button class="primary" type="submit" data-i18n="appearance.submit">Save site appearance</button>
+              </form>
+            </div>
+            <div class="surface site-settings-card">
+              <h2 data-i18n="wechat.title">WeChat site verification</h2>
+              <p class="muted" data-i18n="wechat.description">Enter the filename and exact content supplied by WeChat. Saving publishes the text at /filename immediately. Clear both fields and save to disable it.</p>
+              <form id="wechat-verification-form" class="stack-form">
+                <label><span data-i18n="wechat.filename">Verification filename (.txt)</span><input name="filename" maxlength="132" autocomplete="off" spellcheck="false" aria-describedby="wechat-filename-help"></label>
+                <p id="wechat-filename-help" class="muted" data-i18n="wechat.filenameHelp">Use letters, numbers, underscores or hyphens followed by .txt, starting with a letter or number. No directories; robots.txt is reserved.</p>
+                <label><span data-i18n="wechat.content">Exact verification content</span><textarea name="content" rows="4" maxlength="4096" spellcheck="false"></textarea></label>
+                <p class="muted" data-i18n="wechat.public">This content is public. Do not enter passwords or API keys.</p>
+                <button class="primary" type="submit" data-i18n="wechat.submit">Save verification file</button>
               </form>
             </div>
             <div class="surface retention-card">

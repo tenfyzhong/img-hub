@@ -6,6 +6,13 @@ ImgHub is a multi-user file and text hub built only for Cloudflare Workers, D1, 
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/tenfyzhong/img-hub)
 
+## v0.6.0
+
+- Configure a root-level WeChat verification text file in Site settings; changes take effect immediately without redeployment.
+- Configure the browser favicon in Site appearance, with an original ImgHub icon used by default.
+- Pin local and CI tooling to Node.js 22.23.4.
+- Existing accounts, resources, and public URLs are preserved. Runtime settings use the existing D1 settings table; no new migration is required.
+
 ## Features
 
 - First-run administrator setup; there is no shared upload code.
@@ -44,7 +51,7 @@ Automatic resource provisioning is a current Wrangler feature. If your Cloudflar
 
 ## Deployment option 2: one-command CLI deployment
 
-Requirements: Node.js 22 or newer and a Cloudflare account.
+Requirements: Node.js 22.23.4 (see `.node-version`) and a Cloudflare account.
 
 ```sh
 git clone https://github.com/tenfyzhong/img-hub.git
@@ -253,6 +260,12 @@ Cloudflare Cache API entries are local to the data center handling the request r
 ## Site appearance
 
 Administrators can open the separate **Site settings** menu to change the site title, tagline, welcome title, and welcome description. Values are stored in D1, validated with explicit length limits, and rendered with `textContent` rather than HTML. Defaults are used automatically until the administrator saves custom values.
+
+Administrators can configure a favicon URL under **Site settings → Site appearance**. Use a public HTTPS image URL or a site-relative path (for example, `/pub/Abc123?v=1`), up to 2048 characters. Saving updates the browser tab icon immediately; clearing the field restores the built-in ImgHub icon. The setting persists in D1 and applies to signed-out visitors too.
+
+### WeChat verification
+
+Administrators can open **Site settings → WeChat site verification**, enter the `.txt` filename and exact content supplied by WeChat, and save. Anonymous `GET /{filename}` returns UTF-8 plain text immediately, without an added newline or caching; no redeployment or Cloudflare credentials are needed. The filename starts with a letter or number, followed by up to 127 letters, numbers, `_` or `-`, then `.txt`; `robots.txt` is reserved. Content is limited to 4096 characters and is public. Clear both fields and save to disable the runtime file; renaming removes the previous runtime URL. Settings persist in D1 as one pair. A matching runtime file takes precedence over the optional deployment-provided file. Clearing runtime settings does not remove a deployment-provided file: remove its repository variables and redeploy to remove that static copy.
 
 ## R2 retention
 
