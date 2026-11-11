@@ -10,6 +10,17 @@ import {
     publishEdge,
 } from "../scripts/publish-extensions.mjs";
 
+test("release metadata and bilingual release notes match the package version", async () => {
+    const manifest = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+    const lock = JSON.parse(await readFile(new URL("../package-lock.json", import.meta.url), "utf8"));
+    assert.equal(lock.version, manifest.version);
+    assert.equal(lock.packages[""].version, manifest.version);
+    for (const filename of ["README.md", "README.zh-CN.md"]) {
+        const documentation = await readFile(new URL(`../${filename}`, import.meta.url), "utf8");
+        assert.ok(documentation.includes(`## v${manifest.version}`), `${filename} must describe the current release`);
+    }
+});
+
 test("browser store publishing only enables stores with complete credentials", () => {
     const configuration = getStoreConfiguration({
         CHROME_PUBLISHER_ID: "publisher",

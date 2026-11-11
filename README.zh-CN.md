@@ -6,6 +6,13 @@ ImgHub 是一个只使用 Cloudflare Workers、D1 和 R2 的多用户文件与�
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/tenfyzhong/img-hub)
 
+## v0.6.0
+
+- 可在站点设置中配置根目录微信验证文本文件，保存后立即生效，无需重新部署。
+- 可在站点外观中配置浏览器 favicon，未配置时使用 ImgHub 原创默认图标。
+- 本地与 CI 工具链固定为 Node.js 22.23.4。
+- 保留现有账号、资源和公开 URL。运行时设置使用现有 D1 设置表，无需新增迁移。
+
 ## 功能
 
 - 首次启动时创建管理员，不使用共享上传认证码。
