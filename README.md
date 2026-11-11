@@ -6,6 +6,13 @@ ImgHub is a multi-user file and text hub built only for Cloudflare Workers, D1, 
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/tenfyzhong/img-hub)
 
+## v0.6.0
+
+- Configure a root-level WeChat verification text file in Site settings; changes take effect immediately without redeployment.
+- Configure the browser favicon in Site appearance, with an original ImgHub icon used by default.
+- Pin local and CI tooling to Node.js 22.23.4.
+- Existing accounts, resources, and public URLs are preserved. Runtime settings use the existing D1 settings table; no new migration is required.
+
 ## Features
 
 - First-run administrator setup; there is no shared upload code.
