@@ -370,3 +370,14 @@ test("site administration offers localized WeChat verification controls", async 
     assert.match(javascript, /\/api\/admin\/wechat-verification/);
     assert.match(javascript, /wechat-verification-form/);
 });
+
+test("site appearance supplies a default favicon and applies saved icons", async () => {
+    const html = await readFile(new URL("../public/index.html", import.meta.url), "utf8");
+    const javascript = await readFile(new URL("../public/app.js", import.meta.url), "utf8");
+    assert.match(html, /<link id="site-favicon" rel="icon" href="\/favicon.svg">/);
+    assert.match(html, /name="faviconUrl"[^>]*maxlength="2048"/);
+    assert.match(javascript, /byId\("site-favicon"\)\.href = site\.faviconUrl \|\| "\/favicon.svg"/);
+    const icon = await readFile(new URL("../public/favicon.svg", import.meta.url), "utf8");
+    assert.match(icon, /viewBox="0 0 40 40"/);
+    assert.match(icon, /M7 27.5 15.5 19/);
+});

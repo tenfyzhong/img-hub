@@ -259,6 +259,7 @@ test("the complete Worker uses only local D1, R2, assets, and cache simulations"
     assert.equal(enabledLogin.status, 200);
 
     const settingsResponse = await worker.fetch("/api/admin/site-settings", jsonRequest("PUT", {
+        faviconUrl: "/favicon.svg?v=2",
         siteTitle: "Local Gallery",
         siteTagline: "No remote resources",
         welcomeTitle: "Everything runs on this machine.",
@@ -267,6 +268,18 @@ test("the complete Worker uses only local D1, R2, assets, and cache simulations"
     assert.equal(settingsResponse.status, 200);
     const publicSettings = await worker.fetch("/api/site-settings").then((response) => response.json());
     assert.equal(publicSettings.site.siteTitle, "Local Gallery");
+    assert.equal(publicSettings.site.faviconUrl, "/favicon.svg?v=2");
+    const favicon = await worker.fetch("/favicon.svg");
+    assert.equal(favicon.status, 200);
+    assert.match(favicon.headers.get("Content-Type"), /image\/svg\+xml/);
+    assert.match(await favicon.text(), /M7 27.5 15.5 19/);
+    const clearedSettings = await worker.fetch("/api/admin/site-settings", jsonRequest("PUT", {
+        ...publicSettings.site,
+        faviconUrl: "",
+    }, cookie));
+    assert.equal(clearedSettings.status, 200);
+    assert.equal((await worker.fetch("/api/site-settings").then((response) => response.json())).site.faviconUrl, "");
+
 
     // Runtime verification must be administrator-only and bypass SPA navigation.
     const verificationPath = "/api/admin/wechat-verification";

@@ -56,3 +56,28 @@ test("site settings require an administrator and enforce text limits", async () 
     }), /welcome description/i);
     assert.equal(memory.values.size, 0);
 });
+
+test("favicon settings persist, clear to the default, and accept older clients", async () => {
+    const memory = memorySettings();
+    const service = createSiteSettingsService(memory.repository);
+    assert.equal((await service.get()).faviconUrl, "");
+    for (const faviconUrl of ["https://example.com/icon.png?v=2", "/pub/Abc123?v=1"]) {
+        await service.update({ role: "admin" }, { ...DEFAULT_SITE_SETTINGS, faviconUrl });
+        assert.equal((await createSiteSettingsService(memory.repository).get()).faviconUrl, faviconUrl);
+        assert.equal(memory.values.get("site_favicon_url"), faviconUrl);
+    }
+    await service.update({ role: "admin" }, { ...DEFAULT_SITE_SETTINGS, faviconUrl: "   " });
+    assert.equal((await service.get()).faviconUrl, "");
+    const { faviconUrl, ...legacy } = DEFAULT_SITE_SETTINGS;
+    await service.update({ role: "admin" }, legacy);
+    assert.equal((await service.get()).faviconUrl, "");
+});
+
+test("favicon settings reject unsafe URLs and invalid values without writing", async () => {
+    const memory = memorySettings();
+    const service = createSiteSettingsService(memory.repository);
+    for (const faviconUrl of ["javascript:alert(1)", "data:image/svg+xml,foo", "//evil.test/a", "/\\evil.test/a", "https://user:password@example.com/a", "http://example.com/a", "https://", "relative.png", "/bad\npath", 123, "https://example.com/" + "a".repeat(2048)]) {
+        await assert.rejects(service.update({ role: "admin" }, { ...DEFAULT_SITE_SETTINGS, faviconUrl }), { code: "invalid_site_settings" });
+        assert.equal(memory.values.size, 0);
+    }
+});

@@ -311,6 +311,7 @@ function showAuthentication(panel) {
 function applySiteSettings(site) {
     state.site = site;
     document.title = site.siteTitle;
+    byId("site-favicon").href = site.faviconUrl || "/favicon.svg";
     document.querySelector('meta[name="description"]').content = localizedSiteValue(
         "welcomeDescription",
         site.welcomeDescription,

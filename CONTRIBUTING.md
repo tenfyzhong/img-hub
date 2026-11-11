@@ -236,6 +236,10 @@ Remote recovery requires `npm run admin:reset -- --remote --database <D1_DATABAS
 
 Changes to `.github/workflows/reset-admin-password.yml` should be validated by `test/admin-recovery.test.js`. Do not dispatch that workflow merely to test YAML: a live run directly changes the selected D1 database, revokes administrator credentials, and requires explicit authorization plus a disposable deployment.
 
+### Favicon testing
+
+In Site appearance, verify the default ImgHub tab icon before configuration. Save a public image URL, confirm the tab icon updates immediately and survives reload/sign-out, then clear it and confirm the default returns. Repeat in English/Chinese on desktop/mobile; invalid URLs must be rejected without changing saved settings.
+
 ### Language testing
 
 Clear the `img-hub-language` local storage key and change the browser's first preferred language. Confirm a `zh` locale opens the Chinese UI and another locale opens English. Then use **EN / 中文**, reload, and confirm the explicit choice persists. Check setup, login, forced password change, all three Upload tabs, the unified resource manager, Security, Administration, dynamic messages, errors, confirmation dialogs, and mobile navigation in both languages. Administrator-configured site appearance is intentionally shared across languages; built-in unsaved welcome copy is localized.
