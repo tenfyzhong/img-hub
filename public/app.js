@@ -818,13 +818,18 @@ async function loadHistory() {
 
 async function loadAdministration() {
     try {
-        const [settings, retention] = await Promise.all([
+        const [settings, retention, verification] = await Promise.all([
             api("/api/site-settings"),
             api("/api/admin/retention"),
+            api("/api/admin/wechat-verification"),
         ]);
         const siteForm = byId("site-settings-form");
         for (const [name, value] of Object.entries(settings.site)) {
             siteForm.elements[name].value = value;
+        }
+        const verificationForm = byId("wechat-verification-form");
+        for (const [name, value] of Object.entries(verification.verification)) {
+            verificationForm.elements[name].value = value;
         }
         byId("retention-form").elements.retentionDays.value = retention.retention.retentionDays;
     } catch (error) {
@@ -1326,6 +1331,18 @@ byId("site-settings-form").addEventListener("submit", (event) => {
         });
         applySiteSettings(result.site);
         notify(t("message.appearanceUpdated"));
+    });
+});
+
+byId("wechat-verification-form").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    submit(form, async () => {
+        await api("/api/admin/wechat-verification", {
+            method: "PUT",
+            body: formBody(form),
+        });
+        notify(t("wechat.updated"));
     });
 });
 

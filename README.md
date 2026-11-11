@@ -254,6 +254,10 @@ Cloudflare Cache API entries are local to the data center handling the request r
 
 Administrators can open the separate **Site settings** menu to change the site title, tagline, welcome title, and welcome description. Values are stored in D1, validated with explicit length limits, and rendered with `textContent` rather than HTML. Defaults are used automatically until the administrator saves custom values.
 
+### WeChat verification
+
+Administrators can open **Site settings → WeChat site verification**, enter the `.txt` filename and exact content supplied by WeChat, and save. Anonymous `GET /{filename}` returns UTF-8 plain text immediately, without an added newline or caching; no redeployment or Cloudflare credentials are needed. The filename starts with a letter or number, followed by up to 127 letters, numbers, `_` or `-`, then `.txt`; `robots.txt` is reserved. Content is limited to 4096 characters and is public. Clear both fields and save to disable the runtime file; renaming removes the previous runtime URL. Settings persist in D1 as one pair. A matching runtime file takes precedence over the optional deployment-provided file. Clearing runtime settings does not remove a deployment-provided file: remove its repository variables and redeploy to remove that static copy.
+
 ## R2 retention
 
 Open **Site settings** as the administrator and set an integer from 1 to 3650 days. The value is stored in D1 and defaults to 91. A daily scheduled Worker task lists only objects below `users/` through the existing R2 binding and removes expired objects, so no Cloudflare Account ID, bucket name, API token, or runtime management token is required.

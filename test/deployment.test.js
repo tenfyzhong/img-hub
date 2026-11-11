@@ -39,6 +39,7 @@ test("generated deployment config binds the provisioned D1 and R2 resources", ()
         "/file/*",
         "/text/*",
         "/pub_*",
+        "/*.txt",
     ]);
     assert.deepEqual(config.triggers.crons, ["0 3 * * *"]);
     assert.equal(config.vars.TURNSTILE_SITE_KEY, "0x-site-key");

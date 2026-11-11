@@ -156,6 +156,7 @@ src/resource-name.js            timestamped and generated resource names
 src/pagination.js               bounded administrator paging/search helpers
 src/public-resource.js          public responses and Cache API integration
 src/site-settings-service.js    public/admin appearance settings
+src/wechat-verification-service.js administrator verification file and public text response
 src/http.js / src/paths.js      HTTP guards, routes, names, and path safety
 public/                         dependency-free browser UI
 public/i18n.js                  English/Chinese catalogs and locale selection

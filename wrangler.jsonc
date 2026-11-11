@@ -22,7 +22,8 @@
       "/pub/*",
       "/file/*",
       "/text/*",
-      "/pub_*"
+      "/pub_*",
+      "/*.txt"
     ]
   },
   "triggers": {
