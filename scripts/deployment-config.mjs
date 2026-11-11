@@ -35,7 +35,7 @@ export function createDeploymentConfig({
             directory: assetsDirectory,
             binding: "ASSETS",
             not_found_handling: "single-page-application",
-            run_worker_first: ["/api/*", "/pub/*", "/file/*", "/text/*", "/pub_*"],
+            run_worker_first: ["/api/*", "/pub/*", "/file/*", "/text/*", "/pub_*", "/*.txt"],
         },
         triggers: { crons: ["0 3 * * *"] },
         observability: { enabled: true },

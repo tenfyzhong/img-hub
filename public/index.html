@@ -314,6 +314,17 @@
                 <button class="primary" type="submit" data-i18n="appearance.submit">Save site appearance</button>
               </form>
             </div>
+            <div class="surface site-settings-card">
+              <h2 data-i18n="wechat.title">WeChat site verification</h2>
+              <p class="muted" data-i18n="wechat.description">Enter the filename and exact content supplied by WeChat. Saving publishes the text at /filename immediately. Clear both fields and save to disable it.</p>
+              <form id="wechat-verification-form" class="stack-form">
+                <label><span data-i18n="wechat.filename">Verification filename (.txt)</span><input name="filename" maxlength="132" autocomplete="off" spellcheck="false" aria-describedby="wechat-filename-help"></label>
+                <p id="wechat-filename-help" class="muted" data-i18n="wechat.filenameHelp">Use letters, numbers, underscores or hyphens followed by .txt, starting with a letter or number. No directories; robots.txt is reserved.</p>
+                <label><span data-i18n="wechat.content">Exact verification content</span><textarea name="content" rows="4" maxlength="4096" spellcheck="false"></textarea></label>
+                <p class="muted" data-i18n="wechat.public">This content is public. Do not enter passwords or API keys.</p>
+                <button class="primary" type="submit" data-i18n="wechat.submit">Save verification file</button>
+              </form>
+            </div>
             <div class="surface retention-card">
               <h2 data-i18n="retention.title">R2 retention</h2>
               <p class="muted" data-i18n="retention.description">The deployed backend removes objects older than this value during its daily maintenance run. No Cloudflare credentials are required here.</p>

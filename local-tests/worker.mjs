@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import test from "node:test";
 
 import { unstable_dev } from "wrangler";
+import { prepareDeploymentAssets } from "../scripts/wechat-verification.mjs";
 
 process.env.CLOUDFLARE_CF_FETCH_ENABLED = "false";
 
@@ -32,8 +33,16 @@ function cookieHeader(cookies) {
 }
 
 test("the complete Worker uses only local D1, R2, assets, and cache simulations", async (context) => {
+    const assets = prepareDeploymentAssets({
+        environment: {
+            IMG_HUB_WECHAT_VERIFY_FILENAME: "deployment-verification.txt",
+            IMG_HUB_WECHAT_VERIFY_CONTENT: "deployment placeholder",
+        },
+    });
+    context.after(() => assets.cleanup());
     const worker = await unstable_dev("src/index.js", {
         config: "wrangler.jsonc",
+        assets: assets.directory,
         local: true,
         persist: false,
         vars: {
@@ -258,6 +267,55 @@ test("the complete Worker uses only local D1, R2, assets, and cache simulations"
     assert.equal(settingsResponse.status, 200);
     const publicSettings = await worker.fetch("/api/site-settings").then((response) => response.json());
     assert.equal(publicSettings.site.siteTitle, "Local Gallery");
+
+    // Runtime verification must be administrator-only and bypass SPA navigation.
+    const verificationPath = "/api/admin/wechat-verification";
+    const verification = {
+        filename: "eae2ede6b2d6096f616091c19cd448a8.txt",
+        content: "0127c3a1f08c70701ca480b1c366b225d885917a",
+    };
+    assert.equal(await (await worker.fetch("/deployment-verification.txt")).text(), "deployment placeholder");
+    const adminApiKey = await worker.fetch("/api/api-keys", jsonRequest("POST", { name: "verification permissions" }, cookie)).then((response) => response.json());
+    const apiKeyUpdate = jsonRequest("PUT", verification);
+    apiKeyUpdate.headers.Authorization = `Bearer ${adminApiKey.token}`;
+    assert.equal((await worker.fetch(verificationPath, apiKeyUpdate)).status, 403);
+    assert.equal((await worker.fetch(verificationPath, { headers: { Authorization: `Bearer ${adminApiKey.token}` } })).status, 403);
+    assert.equal((await worker.fetch(verificationPath)).status, 401);
+    assert.equal((await worker.fetch(verificationPath, jsonRequest("PUT", verification))).status, 401);
+    const verificationUserCookie = cookieHeader(responseCookies(enabledLogin));
+    assert.equal((await worker.fetch(verificationPath, { headers: { cookie: verificationUserCookie } })).status, 403);
+    assert.equal((await worker.fetch(verificationPath, jsonRequest("PUT", verification, verificationUserCookie))).status, 403);
+    const crossOrigin = jsonRequest("PUT", verification, cookie);
+    crossOrigin.headers.Origin = "https://other.example";
+    assert.equal((await worker.fetch(verificationPath, crossOrigin)).status, 403);
+    const verificationSave = await worker.fetch(verificationPath, jsonRequest("PUT", verification, cookie));
+    assert.equal(verificationSave.status, 200);
+    assert.deepEqual((await (await worker.fetch(verificationPath, { headers: { cookie } })).json()).verification, verification);
+    assert.equal((await worker.fetch("/api/site-settings").then((response) => response.json())).site.verification, undefined);
+    const verifyResponse = await worker.fetch(`/${verification.filename}`, {
+        headers: { "Sec-Fetch-Mode": "navigate", Accept: "text/html" },
+    });
+    assert.equal(verifyResponse.status, 200);
+    assert.equal(verifyResponse.headers.get("Content-Type"), "text/plain; charset=utf-8");
+    assert.equal(verifyResponse.headers.get("Cache-Control"), "no-store");
+    assert.equal(await verifyResponse.text(), verification.content);
+    assert.equal((await worker.fetch(`/${verification.filename}`, { method: "POST" })).status, 405);
+    assert.equal(await (await worker.fetch(`/${verification.filename}`, { method: "HEAD" })).text(), "");
+    assert.equal((await worker.fetch(verificationPath, jsonRequest("PUT", { ...verification, filename: "../bad.txt" }, cookie))).status, 400);
+    const updatedVerification = { filename: "updated-verification.txt", content: "  exact\r\ncontent\n " };
+    assert.equal((await worker.fetch(verificationPath, jsonRequest("PUT", updatedVerification, cookie))).status, 200);
+    assert.equal((await worker.fetch(`/${verification.filename}`)).status, 404);
+    assert.equal(await (await worker.fetch(`/${updatedVerification.filename}`)).text(), updatedVerification.content);
+    assert.equal((await worker.fetch(verificationPath, jsonRequest("PUT", { filename: "", content: "" }, cookie))).status, 200);
+    assert.equal((await worker.fetch(`/${updatedVerification.filename}`)).status, 404);
+
+    const prefixedVerification = { filename: "pub_verification.txt", content: "prefix placeholder" };
+    assert.equal((await worker.fetch(verificationPath, jsonRequest("PUT", prefixedVerification, cookie))).status, 200);
+    assert.equal(await (await worker.fetch(`/${prefixedVerification.filename}`)).text(), prefixedVerification.content);
+    assert.equal((await worker.fetch(verificationPath, jsonRequest("PUT", { filename: "deployment-verification.txt", content: "runtime override" }, cookie))).status, 200);
+    assert.equal(await (await worker.fetch("/deployment-verification.txt")).text(), "runtime override");
+    assert.equal((await worker.fetch(verificationPath, jsonRequest("PUT", { filename: "", content: "" }, cookie))).status, 200);
+    assert.equal(await (await worker.fetch("/deployment-verification.txt")).text(), "deployment placeholder");
 
     const defaultRetention = await worker.fetch("/api/admin/retention", {
         headers: { cookie },

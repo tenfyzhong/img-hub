@@ -285,6 +285,10 @@ node --test test/lifecycle.test.js
 
 Do not trigger retention against deployed R2 data during routine testing. Use the repository R2 double or an explicitly isolated local Wrangler state; only use disposable live data when the user explicitly authorizes it.
 
+### WeChat verification checklist
+
+In both English and Chinese, on desktop and mobile, open Site settings and save a placeholder filename/content pair. Reload and verify both values persist; anonymously GET the root URL and compare the exact plain-text body. Modify the content, rename the file, then clear both fields; verify immediate changes and 404 for removed runtime files. Reject a directory filename, partial pair, ordinary-user request, API-key request, and cross-origin update. Verify existing static verification files still work and follow the documented precedence when a runtime filename matches.
+
 ## Manual browser extension testing
 
 Build all three development variants, or one target while iterating:

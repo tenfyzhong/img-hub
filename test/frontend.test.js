@@ -357,3 +357,16 @@ test("the site uses its own CSS-generated background and brand", async () => {
     assert.match(css, /background-image:[^;]*(radial-gradient|linear-gradient)/s);
     assert.doesNotMatch(css, /url\([^)]*\.(jpg|jpeg|png|webp)/i);
 });
+
+
+test("site administration offers localized WeChat verification controls", async () => {
+    const html = await readFile(new URL("../public/index.html", import.meta.url), "utf8");
+    const javascript = await readFile(new URL("../public/app.js", import.meta.url), "utf8");
+    const form = html.match(/<form id="wechat-verification-form"[\s\S]*?<\/form>/)?.[0] || "";
+    assert.match(form, /name="filename"/);
+    assert.match(form, /name="content"/);
+    assert.match(form, /maxlength="4096"/);
+    assert.match(form, /data-i18n="wechat.submit"/);
+    assert.match(javascript, /\/api\/admin\/wechat-verification/);
+    assert.match(javascript, /wechat-verification-form/);
+});
